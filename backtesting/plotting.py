@@ -2,6 +2,7 @@
 
 import plotly.graph_objs as go
 import plotly.express as px
+import numpy as np
 
 # def plot_cash_consumption(cash_consumption):
 #     fig = go.Figure()
@@ -47,7 +48,7 @@ def plot_cash_usage_breakdown(
 
     fig.add_trace(go.Scatter(
         x=cumulative_flows.index,
-        y=outflows_buy.sum(axis=1),
+        y=outflows_buy.sum(axis=1).cumsum(),
         name='Achats (open long ; cover short)',
         stackgroup='out',
         mode='none',
@@ -56,7 +57,7 @@ def plot_cash_usage_breakdown(
 
     fig.add_trace(go.Scatter(
         x=cumulative_flows.index,
-        y=inflows_sell.sum(axis=1),
+        y=inflows_sell.sum(axis=1).cumsum(),
         name='Ventes (close long ; open short))',
         stackgroup='in',
         mode='none',
@@ -84,7 +85,7 @@ def plot_cash_usage_breakdown(
 
     fig.add_trace(go.Scatter(
         x=cumulative_flows.index,
-        y=df_margin_call.sum(axis=1),
+        y=df_margin_call.sum(axis=1).cumsum(),
         name='Collat + Margin call',
         stackgroup='out',
         mode='none',
@@ -93,7 +94,7 @@ def plot_cash_usage_breakdown(
 
     fig.add_trace(go.Scatter(
         x=cumulative_flows.index,
-        y=outflows_transac_fees.sum(axis=1),
+        y=outflows_transac_fees.sum(axis=1).cumsum(),
         name='Frais de transaction',
         stackgroup='out',
         mode='none',
@@ -102,7 +103,7 @@ def plot_cash_usage_breakdown(
 
     fig.add_trace(go.Scatter(
         x=cumulative_flows.index,
-        y=outflows_repo.sum(axis=1),
+        y=outflows_repo.sum(axis=1).cumsum(),
         name='Frais de repo',
         stackgroup='out',
         mode='none',
