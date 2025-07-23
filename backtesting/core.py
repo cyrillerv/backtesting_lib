@@ -1,8 +1,8 @@
 from .positions import PortfolioBuilder
 from .utils import (
-    calc_other_df,
-    calc_returns,
-    calculate_drawdown
+    compute_portfolio_pnl,
+    compute_portfolio_returns,
+    compute_drawdown
 )
 from .metrics import compute_metrics
 from .plotting import *
@@ -58,12 +58,12 @@ class BacktestEngine:
         self.builder.build_df()
 
         # Calculs de performance
-        self.cumulative_pnl_portfolio, self.daily_pnl_portfolio = calc_other_df(self.builder.df_volume_portfolio, self.builder.df_stock_prices_reindexed)
+        self.cumulative_pnl_portfolio, self.daily_pnl_portfolio = compute_portfolio_pnl(self.builder.df_volume_portfolio, self.builder.df_stock_prices_reindexed)
         
         max_cash_needed = self.builder.cash_consumption_with_costs.max()
 
-        self.drawdown = calculate_drawdown(self.cumulative_pnl_portfolio, max_cash_needed)
-        self.portfolio_returns = calc_returns(self.daily_pnl_portfolio, self.builder.df_valeur_portfolio)
+        self.drawdown = compute_drawdown(self.cumulative_pnl_portfolio, max_cash_needed)
+        self.portfolio_returns = compute_portfolio_returns(self.daily_pnl_portfolio, self.builder.df_valeur_portfolio)
 
         # Calcul des métriques finales
         self.metrics = compute_metrics(
