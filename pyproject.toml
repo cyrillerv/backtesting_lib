@@ -1,0 +1,18 @@
+[project]
+name = "backtesting"
+version = "0.1.0"
+description = "Backtesting engine for financial strategies"
+authors = [{name = "Cyrille HERVE", email = "cyrillerv0103@gmail.com"}]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "pandas",
+    "numpy",
+    "warnings",
+    "plotly",
+    pytest
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
