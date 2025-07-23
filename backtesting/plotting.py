@@ -27,102 +27,102 @@ def plot_drawdown(drawdown):
     fig.update_layout(title="Drawdown")
     return fig
 
+# TODO: something's wrong, the number do not add up
+# def plot_cash_usage_breakdown(
+#     cumulative_flows,
+#     outflows_buy,
+#     inflows_sell,
+#     df_margin_call,
+#     outflows_transac_fees,
+#     outflows_repo,
+#     cash_costs,
+#     cash_gains,
+# ):
+#     # Création du graphique Plotly
+#     fig = go.Figure()
 
-def plot_cash_usage_breakdown(
-    cumulative_flows,
-    outflows_buy,
-    inflows_sell,
-    df_margin_call,
-    outflows_transac_fees,
-    outflows_repo,
-    cash_costs,
-    cash_gains,
-):
-    # Création du graphique Plotly
-    fig = go.Figure()
+#     fig.add_trace(go.Scatter(
+#         x=cumulative_flows.index,
+#         y=outflows_buy.sum(axis=1).cumsum(),
+#         name='Achats (open long ; cover short)',
+#         stackgroup='out',
+#         mode='none',
+#         line=dict(color='blue')
+#     ))
 
-    fig.add_trace(go.Scatter(
-        x=cumulative_flows.index,
-        y=outflows_buy.sum(axis=1).cumsum(),
-        name='Achats (open long ; cover short)',
-        stackgroup='out',
-        mode='none',
-        line=dict(color='blue')
-    ))
+#     fig.add_trace(go.Scatter(
+#         x=cumulative_flows.index,
+#         y=inflows_sell.sum(axis=1).cumsum(),
+#         name='Ventes (close long ; open short))',
+#         stackgroup='in',
+#         mode='none',
+#         line=dict(color='green')
+#     ))
 
-    fig.add_trace(go.Scatter(
-        x=cumulative_flows.index,
-        y=inflows_sell.sum(axis=1).cumsum(),
-        name='Ventes (close long ; open short))',
-        stackgroup='in',
-        mode='none',
-        line=dict(color='green')
-    ))
+#     fig.add_trace(go.Scatter(
+#         x=cumulative_flows.index,
+#         y=cash_costs.cumsum(),
+#         name='Cash cost',
+#         stackgroup='out',
+#         mode='none',
+#         # line=dict(color='blue')
+#     ))
 
-    fig.add_trace(go.Scatter(
-        x=cumulative_flows.index,
-        y=cash_costs.cumsum(),
-        name='Cash cost',
-        stackgroup='out',
-        mode='none',
-        # line=dict(color='blue')
-    ))
-
-    fig.add_trace(go.Scatter(
-        x=cumulative_flows.index,
-        y=cash_gains.cumsum(),
-        name='Cash gain',
-        stackgroup='in',
-        mode='none',
-        # line=dict(color='green')
-    ))
+#     fig.add_trace(go.Scatter(
+#         x=cumulative_flows.index,
+#         y=cash_gains.cumsum(),
+#         name='Cash gain',
+#         stackgroup='in',
+#         mode='none',
+#         # line=dict(color='green')
+#     ))
 
 
-    fig.add_trace(go.Scatter(
-        x=cumulative_flows.index,
-        y=df_margin_call.sum(axis=1).cumsum(),
-        name='Collat + Margin call',
-        stackgroup='out',
-        mode='none',
-        line=dict(color='orange')
-    ))
+#     fig.add_trace(go.Scatter(
+#         x=cumulative_flows.index,
+#         y=df_margin_call.sum(axis=1).cumsum(),
+#         name='Collat + Margin call',
+#         stackgroup='out',
+#         mode='none',
+#         line=dict(color='orange')
+#     ))
 
-    fig.add_trace(go.Scatter(
-        x=cumulative_flows.index,
-        y=outflows_transac_fees.sum(axis=1).cumsum(),
-        name='Frais de transaction',
-        stackgroup='out',
-        mode='none',
-        line=dict(color='red')
-    ))
+#     fig.add_trace(go.Scatter(
+#         x=cumulative_flows.index,
+#         y=outflows_transac_fees.sum(axis=1).cumsum(),
+#         name='Frais de transaction',
+#         stackgroup='out',
+#         mode='none',
+#         line=dict(color='red')
+#     ))
 
-    fig.add_trace(go.Scatter(
-        x=cumulative_flows.index,
-        y=outflows_repo.sum(axis=1).cumsum(),
-        name='Frais de repo',
-        stackgroup='out',
-        mode='none',
-        line=dict(color='purple')
-    ))
+#     fig.add_trace(go.Scatter(
+#         x=cumulative_flows.index,
+#         y=outflows_repo.sum(axis=1).cumsum(),
+#         name='Frais de repo',
+#         stackgroup='out',
+#         mode='none',
+#         line=dict(color='purple')
+#     ))
 
-    fig.add_trace(go.Scatter(
-        x=cumulative_flows.index,
-        y=cumulative_flows.values,
-        name='Cash total utilisé',
-        mode='lines',
-        line=dict(color='black', dash='dash')
-    ))
+#     fig.add_trace(go.Scatter(
+#         x=cumulative_flows.index,
+#         y=cumulative_flows.values,
+#         name='Cash total utilisé',
+#         mode='lines',
+#         line=dict(color='black', dash='dash')
+#     ))
 
-    fig.update_layout(
-        title='Utilisation cumulée du cash par catégorie',
-        xaxis_title='Date',
-        yaxis_title='Montant (€)',
-        hovermode='x unified',
-        template='plotly_white',
-        height=600
-    )
+#     fig.update_layout(
+#         title='Utilisation cumulée du cash par catégorie',
+#         xaxis_title='Date',
+#         yaxis_title='Montant (€)',
+#         hovermode='x unified',
+#         template='plotly_white',
+#         height=600
+#     )
 
-    return fig
+#     return fig
 
 def plot_histo_returns_distrib(df_perf) :
     ## Plot l'histogramme de la répartition des perf

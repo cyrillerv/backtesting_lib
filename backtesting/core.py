@@ -80,17 +80,17 @@ class BacktestEngine:
         # self.cash_consumption_graph = plot_cash_consumption(self.builder.cash_consumption_with_costs)
         self.cumulative_pnl_graph = plot_cumulative_pnl(self.cumulative_pnl_portfolio)
         self.drawdown_graph = plot_drawdown(self.drawdown)
-        # self.cash_graph = plot_cash(self.builder.cash_balance, self.builder.cash_consumption_with_costs)
-        self.cash_graph = plot_cash_usage_breakdown(
-            self.builder.cash_consumption_with_costs,
-            self.builder.outflows_buy,
-            self.builder.inflows_sell,
-            self.builder.df_margin_call,
-            self.builder.outflows_transac_fees,
-            self.builder.outflows_repo,
-            self.builder.cash_costs,
-            self.builder.cash_gains,
-        )
+        # TODO: something's wrong, the number do not add up
+        # self.cash_graph = plot_cash_usage_breakdown(
+        #     self.builder.cash_consumption_with_costs,
+        #     self.builder.outflows_buy,
+        #     self.builder.inflows_sell,
+        #     self.builder.df_margin_call,
+        #     self.builder.outflows_transac_fees,
+        #     self.builder.outflows_repo,
+        #     self.builder.cash_costs,
+        #     self.builder.cash_gains,
+        # )
         self.returns_histogram = plot_histo_returns_distrib(self.portfolio_returns)
 
 
@@ -100,7 +100,8 @@ class BacktestEngine:
         return self.metrics
     
     def plot_graphs(self) :
-        self.cash_graph.show()
+        # TODO: something's wrong, the number do not add up
+        # self.cash_graph.show()
         self.cumulative_pnl_graph.show()
         self.drawdown_graph.show()
         self.returns_histogram.show()
