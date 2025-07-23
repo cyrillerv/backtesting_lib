@@ -4,11 +4,6 @@ import plotly.graph_objs as go
 import plotly.express as px
 import numpy as np
 
-# def plot_cash_consumption(cash_consumption):
-#     fig = go.Figure()
-#     fig.add_trace(go.Scatter(y=cash_consumption, name="Cash"))
-#     fig.update_layout(title="Cash Consumption Over Time")
-#     return fig
 
 def plot_cumulative_pnl(cumulative_pnl_portfolio):
     fig = go.Figure()
@@ -154,5 +149,3 @@ def plot_histo_returns_distrib(df_perf) :
     # Affichage
     return fig
 
-
-# flows_portfolio histogramme more cash consumption pour chaque ticker
