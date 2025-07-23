@@ -10,7 +10,7 @@ dependencies = [
     "numpy",
     "warnings",
     "plotly",
-    pytest
+    "pytest"
 ]
 
 [build-system]
