@@ -3,9 +3,10 @@ import numpy as np
 import warnings
 
 class DataValidator:
-    def __init__(self, orders_df, stock_prices_df):
+    def __init__(self, orders_df, stock_prices_df, bench_df_input=None):
         self.orders_df = orders_df.copy()
         self.stock_prices_df = stock_prices_df.copy()
+        self.bench_df_input = bench_df_input.copy()
     
     def check_orders(self):
         expected_cols = {"Date", "Symbol", "Type", "Volume"}
@@ -78,7 +79,7 @@ class DataValidator:
         self.stock_prices_df.ffill(inplace=True)
 
         print("Consistency check passed.")
-        return self.orders_df, self.stock_prices_df
+        return self.orders_df, self.stock_prices_df, self.bench_df_input
 
     def validate_all(self):
         self.check_orders()

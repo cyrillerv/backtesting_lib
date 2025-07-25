@@ -1,5 +1,6 @@
 # Métriques : sharpe, hit_ratio, drawdown, etc.
 import numpy as np
+import statsmodels.api as sm
 
 def compute_metrics(portfolio_returns, cumulative_pnl_portfolio, drawdown, df_volume_order, max_cash_needed, rf_annual, base):
     
@@ -9,6 +10,10 @@ def compute_metrics(portfolio_returns, cumulative_pnl_portfolio, drawdown, df_vo
     annualized_sharpe_ratio = (average_return - rf_daily) / portfolio_returns.std() * np.sqrt(base)
     annualized_sortino_ratio = (average_return - rf_daily) / portfolio_returns.clip(upper=0).std() * np.sqrt(base)
     annualized_calmar_ratio = (average_return - rf_daily) / drawdown.max()
+
+    # Calcul calmar ratio
+    # Calcul du rendement annualisé
+
 
     metrics = {}
     metrics["sharpe_ratio"] = round(float(annualized_sharpe_ratio), 2)
@@ -26,3 +31,21 @@ def compute_metrics(portfolio_returns, cumulative_pnl_portfolio, drawdown, df_vo
     
     return metrics
 
+
+
+
+def compute_factor_exposition(portfolio_returns, bench_df_input) :
+
+    bench_returns = bench_df_input.pct_change()
+    bench_returns.dropna(inplace=True)
+    # bench_returns_reindex = bench_returns.reindex(portfolio_returns.index)
+
+    X_factors = bench_returns.copy()
+    y_strategy_returns = portfolio_returns.dropna(how='all').copy()
+    # Assure-toi que les deux sont bien alignés dans le temps
+    X_factors, y_strategy_returns = X_factors.align(y_strategy_returns, join="inner", axis=0)
+
+    X_sm = sm.add_constant(X_factors)  # Ajoute une colonne "constante" pour alpha
+    model_sm = sm.OLS(y_strategy_returns, X_sm).fit()
+
+    return model_sm.summary()

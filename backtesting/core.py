@@ -1,10 +1,11 @@
+import pandas as pd
 from .positions import PortfolioBuilder
 from .utils import (
     compute_portfolio_pnl,
     compute_portfolio_returns,
     compute_drawdown
 )
-from .metrics import compute_metrics
+from .metrics import *
 from .plotting import *
 
 from .data_validator import DataValidator
@@ -13,6 +14,7 @@ class BacktestEngine:
     def __init__(self, 
                  orders_df_input, 
                  prices_df_input, 
+                 bench_df_input=pd.DataFrame(),
                  transac_fees=0.001, 
                  borrow_rate=0.02, 
                  borrowing_cash_fees=0.01,
@@ -21,12 +23,14 @@ class BacktestEngine:
                  annual_discount_rate=0.03,
                  base=252):
 
-        validator = DataValidator(orders_df_input, prices_df_input)
-        orders_df, prices_df = validator.validate_all()
+        # TODO: inclure la vérification du df des benchmarks
+        validator = DataValidator(orders_df_input, prices_df_input, bench_df_input)
+        orders_df, prices_df, bench_df = validator.validate_all()
 
 
         self.orders_df = orders_df
         self.prices_df = prices_df
+        self.bench_df = bench_df
         self.transac_fees = transac_fees
         self.borrow_rate = borrow_rate
         self.borrowing_cash_fees = borrowing_cash_fees
@@ -75,6 +79,10 @@ class BacktestEngine:
             self.annual_discount_rate,
             self.base
         )
+
+        if not self.bench_df.empty :
+            self.bench_expo_summary = compute_factor_exposition(self.portfolio_returns, self.bench_df)
+            print(self.bench_expo_summary)
 
         # Création des graphs plotly
         # self.cash_consumption_graph = plot_cash_consumption(self.builder.cash_consumption_with_costs)
