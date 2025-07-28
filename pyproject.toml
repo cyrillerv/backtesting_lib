@@ -10,7 +10,8 @@ dependencies = [
     "numpy",
     "plotly",
     "pytest",
-    "nbformat"
+    "nbformat",
+    "statsmodels"
 ]
 
 [build-system]
