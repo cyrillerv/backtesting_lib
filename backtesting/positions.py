@@ -46,8 +46,8 @@ class PortfolioBuilder() :
 
         # Crée un index de dates continues (jours ouvrés par exemple)
         full_index = pd.date_range(start=self.df_volume_portfolio.index.min(),
-                                end=self.df_volume_portfolio.index.max(),
-                                freq='B')  # 'B' = business days
+                                end=self.df_stock_prices.index.max(),
+                                freq='D')  # 'B' = business days
         # Réindexe et forward fill
         self.df_volume_portfolio = self.df_volume_portfolio.reindex(full_index, method='ffill')
 
