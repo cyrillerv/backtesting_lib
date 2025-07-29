@@ -83,6 +83,7 @@ def test_compute_portfolio_returns_basic():
     pd.testing.assert_series_equal(result, expected_returns)
 
 
+# TODO: gérer car nouvel output dans la fonctio principale
 def test_compute_portfolio_pnl_basic():
     dates = pd.date_range("2024-01-01", periods=4)
 
@@ -103,17 +104,22 @@ def test_compute_portfolio_pnl_basic():
     # day 3: (10 * (101-102)) + (5 * (197-198)) = -10 - 5 = -15
     # day 4: (10 * (103-101)) + (5 * (199-197)) = 20 + 10 = 30
 
+    expected_pnl_ticker = pd.DataFrame({
+        "AAPL": [np.nan, 20, -10, 20],
+        "GOOG": [np.nan, -10, -5, 10]
+    }, index=dates)
     expected_daily = pd.Series([0, 10.0, -15.0, 30.0], index=dates)
     expected_cumulative = expected_daily.cumsum()
 
     # Appel
-    cumulative, daily = compute_portfolio_pnl(volume, prices)
+    cumulative, daily, daily_pnl_per_ticker = compute_portfolio_pnl(volume, prices)
 
     # Vérifications
+    pd.testing.assert_frame_equal(daily_pnl_per_ticker, expected_pnl_ticker, check_freq=False)
     pd.testing.assert_series_equal(daily, expected_daily)
     pd.testing.assert_series_equal(cumulative, expected_cumulative)
 
-
+# TODO: mettre les df en brut au début du fichier pour ne les écrire qu'une seule fois.
 def test_fct_avg_buying_price() :
 
     # Dates fictives pour l'index (tu peux adapter selon ton cas)
@@ -171,7 +177,7 @@ def test_fct_avg_buying_price() :
     assert (res.round(5) == df_ABP_check.round(5)).all().all()
 
 
-
+# TODO: gérer les deux nouveaux ouputs
 def test_fct_calc_profit_transaction() :
 
     # Dates fictives pour l'index (tu peux adapter selon ton cas)
@@ -213,16 +219,16 @@ def test_fct_calc_profit_transaction() :
     df_ABP.columns.name = 'stock'
 
 
-    df_profit_check = pd.DataFrame({
+    df_profit_long_check = pd.DataFrame({
         'A': [
             0, 0, 0, 0.018182, -0.118881,
             0,0,0,0,0,
-            -0.098004, 0,0, -0.018018
+            0, 0,0, -0.018018
         ],
         'B': [
             0, 0, 0, 0.018182, -0.118881,
             0,0,0,0,0,
-            -0.098004, 0,0, -0.018018
+            0, 0,0, -0.018018
         ],
     }, index=pd.to_datetime([
         '2024-01-01', '2024-01-02', '2024-01-03', '2024-01-04',
@@ -231,16 +237,237 @@ def test_fct_calc_profit_transaction() :
         '2024-01-13', '2024-01-14'
     ]))
 
-    df_profit_check.index.name = 'date'
-    df_profit_check.columns.name = 'stock'
+    df_profit_short_check = pd.DataFrame({
+        'A': [
+            0, 0, 0, 0, 0,
+            0,0,0,0,0,
+            -0.098004, 0,0, 0
+        ],
+        'B': [
+            0, 0, 0, 0, 0,
+            0,0,0,0,0,
+            -0.098004, 0,0, 0
+        ],
+    }, index=pd.to_datetime([
+        '2024-01-01', '2024-01-02', '2024-01-03', '2024-01-04',
+        '2024-01-05', '2024-01-06', '2024-01-07', '2024-01-08',
+        '2024-01-09', '2024-01-10', '2024-01-11', '2024-01-12',
+        '2024-01-13', '2024-01-14'
+    ]))
 
+    df_profit_long_check.index.name = 'date'
+    df_profit_long_check.columns.name = 'stock'
+    df_profit_short_check.index.name = 'date'
+    df_profit_short_check.columns.name = 'stock'
 
-    res = calculate_profit_transaction(df_volume_en_portefeuille, df_stock_price, df_ABP)
-    res.fillna(0, inplace=True)
+    profit_long_positions, profit_short_positions = calculate_profit_transaction(df_volume_en_portefeuille, df_stock_price, df_ABP)
+
+    profit_long_positions.fillna(0, inplace=True)
+    profit_short_positions.fillna(0, inplace=True)
 
     # Harmonise les noms de colonnes/index pour une comparaison stricte
-    res.columns.name = 'stock'
-    res.index.name = 'date'
+    profit_long_positions.columns.name = 'stock'
+    profit_long_positions.index.name = 'date'
+    profit_short_positions.columns.name = 'stock'
+    profit_short_positions.index.name = 'date'
 
-    # Vérifie l’égalité
-    assert (res.round(5) == df_profit_check.round(5)).all().all()
+    # Vérifications
+    pd.testing.assert_frame_equal(profit_long_positions, df_profit_long_check, check_freq=False)
+    pd.testing.assert_frame_equal(profit_short_positions, df_profit_short_check, check_freq=False)
+
+
+
+
+import pytest
+
+def format_df_orders(new_orders):
+    new_orders = new_orders.copy()
+    new_orders["Flows"] = new_orders["Volume"] * np.where(new_orders["Type"] == "Buy", 1, -1)
+    new_orders.sort_values("Date", inplace=True)
+    new_orders.reset_index(drop=True, inplace=True)
+    return new_orders
+
+@pytest.mark.parametrize("prices, new_orders_data, expected_result", [
+    ## Buy order et TP triggered
+
+    # 1. On achète 10, le TP se déclenche et on vend les 10
+    (
+        [100, 101, 102, 103, 104],
+        [
+            {"Date": "2023-01-01", "Symbol": "AAPL", "Volume": 10, "Type": "Buy", "StopLoss": -0.02, "TakeProfit": 0.03},
+        ],
+        {"Date": pd.Timestamp("2023-01-04"), "Type": "Sell", "Volume": 10, "Trigger": "TakeProfit"},
+    ),
+
+    # 2. On achète 10, mais il n'en reste que 5 car on en a vendu avant
+    (
+        [100, 101, 102, 103, 104],
+        [
+            {"Date": "2023-01-01", "Symbol": "AAPL", "Volume": 10, "Type": "Buy", "StopLoss": -0.02, "TakeProfit": 0.03},
+            {"Date": "2023-01-03", "Symbol": "AAPL", "Volume": 7, "Type": "Sell", "StopLoss": -0.02, "TakeProfit": 0.02},
+        ],
+        {"Date": pd.Timestamp("2023-01-04"), "Type": "Sell", "Volume": 3, "Trigger": "TakeProfit"},
+    ),
+
+    # 3. On achète 10 mais il n'en reste plus (on a tout vendu avant)
+    (
+        [100, 101, 102, 103, 104],
+        [
+            {"Date": "2023-01-01", "Symbol": "AAPL", "Volume": 10, "Type": "Buy", "StopLoss": -0.02, "TakeProfit": 0.03},
+            {"Date": "2023-01-03", "Symbol": "AAPL", "Volume": 10, "Type": "Sell", "StopLoss": -0.02, "TakeProfit": 0.02},
+        ],
+        None,
+    ),
+
+    # 4. On achète 10 mais il y en a 13 dans notre portefeuille
+    (
+        [100, 101, 102, 103, 104],
+        [
+            {"Date": "2023-01-01", "Symbol": "AAPL", "Volume": 10, "Type": "Buy", "StopLoss": -0.02, "TakeProfit": 0.03},
+            {"Date": "2023-01-03", "Symbol": "AAPL", "Volume": 7, "Type": "Buy", "StopLoss": -0.02, "TakeProfit": 0.05},
+        ],
+        {"Date": pd.Timestamp("2023-01-04"), "Type": "Sell", "Volume": 10, "Trigger": "TakeProfit"},
+    ),
+
+    ## Buy order et SL triggered
+
+    # 5. On achète 10, le TP se déclenche et on vend les 10
+    (
+        [100, 99, 98, 97, 96],
+        [
+            {"Date": "2023-01-01", "Symbol": "AAPL", "Volume": 10, "Type": "Buy", "StopLoss": -0.03, "TakeProfit": 0.03},
+        ],
+        {"Date": pd.Timestamp("2023-01-04"), "Type": "Sell", "Volume": 10, "Trigger": "StopLoss"},
+    ),
+
+    # 6. On achète 10, mais il n'en reste que 5 car on en a vendu avant
+    (
+        [100, 99, 98, 97, 96],
+        [
+            {"Date": "2023-01-01", "Symbol": "AAPL", "Volume": 10, "Type": "Buy", "StopLoss": -0.03, "TakeProfit": 0.03},
+            {"Date": "2023-01-03", "Symbol": "AAPL", "Volume": 7, "Type": "Sell", "StopLoss": -0.02, "TakeProfit": 0.02},
+        ],
+        {"Date": pd.Timestamp("2023-01-04"), "Type": "Sell", "Volume": 3, "Trigger": "StopLoss"},
+    ),
+
+    # 7. On achète 10 mais il n'en reste plus (on a tout vendu avant)
+    (
+        [100, 99, 98, 97, 96],
+        [
+            {"Date": "2023-01-01", "Symbol": "AAPL", "Volume": 10, "Type": "Buy", "StopLoss": -0.03, "TakeProfit": 0.03},
+            {"Date": "2023-01-03", "Symbol": "AAPL", "Volume": 10, "Type": "Sell", "StopLoss": -0.02, "TakeProfit": 0.02},
+        ],
+        None,
+    ),
+
+    # 8. On achète 10 mais il y en a 13 dans notre portefeuille
+    (
+        [100, 99, 98, 97, 96],
+        [
+            {"Date": "2023-01-01", "Symbol": "AAPL", "Volume": 10, "Type": "Buy", "StopLoss": -0.03, "TakeProfit": 0.03},
+            {"Date": "2023-01-03", "Symbol": "AAPL", "Volume": 7, "Type": "Buy", "StopLoss": -0.02, "TakeProfit": 0.05},
+        ],
+        {"Date": pd.Timestamp("2023-01-04"), "Type": "Sell", "Volume": 10, "Trigger": "StopLoss"},
+    ),
+
+    ## Sell order et TP triggered
+
+    # 9. On vend 10, le TP se déclenche et on rachète les 10
+    (
+        [100, 99, 98, 97, 96],  # prix baisse
+        [
+            {"Date": "2023-01-01", "Symbol": "AAPL", "Volume": 10, "Type": "Sell", "StopLoss": -0.03, "TakeProfit": 0.03},
+        ],
+        {"Date": pd.Timestamp("2023-01-04"), "Type": "Buy", "Volume": 10, "Trigger": "TakeProfit"},
+    ),
+
+    # 10.  On vend 10, mais il n'en reste que 5 car on en a racheté avant
+    (
+        [100, 99, 98, 97, 96],
+        [
+            {"Date": "2023-01-01", "Symbol": "AAPL", "Volume": 10, "Type": "Sell", "StopLoss": -0.03, "TakeProfit": 0.03},
+            {"Date": "2023-01-03", "Symbol": "AAPL", "Volume": 7, "Type": "Buy", "StopLoss": -0.02, "TakeProfit": 0.02},
+        ],
+        {"Date": pd.Timestamp("2023-01-04"), "Type": "Buy", "Volume": 3, "Trigger": "TakeProfit"},
+    ),
+
+    # 11. On vend 10 mais il n'en reste plus (on a tout racheté avant)
+    (
+        [100, 99, 98, 97, 96],
+        [
+            {"Date": "2023-01-01", "Symbol": "AAPL", "Volume": 10, "Type": "Sell", "StopLoss": -0.03, "TakeProfit": 0.03},
+            {"Date": "2023-01-03", "Symbol": "AAPL", "Volume": 10, "Type": "Buy", "StopLoss": -0.02, "TakeProfit": 0.02},
+        ],
+        None,
+    ),
+
+    # 12. On vend 10 mais il y en a 13 dans notre portefeuille
+    (
+        [100, 99, 98, 97, 96],
+        [
+            {"Date": "2023-01-01", "Symbol": "AAPL", "Volume": 10, "Type": "Sell", "StopLoss": -0.03, "TakeProfit": 0.03},
+            {"Date": "2023-01-03", "Symbol": "AAPL", "Volume": 7, "Type": "Sell", "StopLoss": -0.02, "TakeProfit": 0.05},
+        ],
+        {"Date": pd.Timestamp("2023-01-04"), "Type": "Buy", "Volume": 10, "Trigger": "TakeProfit"},
+    ),
+
+    ## Sell order et SL triggered
+
+    # 13. On vend 10, le TP se déclenche et on rachète les 10
+    (
+        [100, 101, 102, 103, 104],
+        [
+            {"Date": "2023-01-01", "Symbol": "AAPL", "Volume": 10, "Type": "Sell", "StopLoss": -0.03, "TakeProfit": 0.03},
+        ],
+        {"Date": pd.Timestamp("2023-01-04"), "Type": "Buy", "Volume": 10, "Trigger": "StopLoss"},
+    ),
+
+    # 14. On vend 10, mais il n'en reste que 5 car on en a racheté avant
+    (
+        [100, 101, 102, 103, 104],
+        [
+            {"Date": "2023-01-01", "Symbol": "AAPL", "Volume": 10, "Type": "Sell", "StopLoss": -0.03, "TakeProfit": 0.03},
+            {"Date": "2023-01-03", "Symbol": "AAPL", "Volume": 7, "Type": "Buy", "StopLoss": -0.02, "TakeProfit": 0.02},
+        ],
+        {"Date": pd.Timestamp("2023-01-04"), "Type": "Buy", "Volume": 3, "Trigger": "StopLoss"},
+    ),
+
+    # 15. On vend 10 mais il n'en reste plus (on a tout racheté avant)
+    (
+        [100, 101, 102, 103, 104],
+        [
+            {"Date": "2023-01-01", "Symbol": "AAPL", "Volume": 10, "Type": "Sell", "StopLoss": -0.03, "TakeProfit": 0.03},
+            {"Date": "2023-01-03", "Symbol": "AAPL", "Volume": 10, "Type": "Buy", "StopLoss": -0.02, "TakeProfit": 0.02},
+        ],
+        None,
+    ),
+
+    # 16. On vend 10 mais il y en a 13 dans notre portefeuille
+    (
+        [100, 101, 102, 103, 104],
+        [
+            {"Date": "2023-01-01", "Symbol": "AAPL", "Volume": 10, "Type": "Sell", "StopLoss": -0.03, "TakeProfit": 0.03},
+            {"Date": "2023-01-03", "Symbol": "AAPL", "Volume": 7, "Type": "Sell", "StopLoss": -0.02, "TakeProfit": 0.05},
+        ],
+        {"Date": pd.Timestamp("2023-01-04"), "Type": "Buy", "Volume": 10, "Trigger": "StopLoss"},
+    ),
+])
+def test_simulate_SL_TP_row(prices, new_orders_data, expected_result):
+    # Préparer les données
+    date_range = pd.date_range(start="2023-01-01", periods=len(prices), freq="D")
+    df_stock_prices = pd.DataFrame({"AAPL": prices}, index=date_range)
+    new_orders = pd.DataFrame(new_orders_data)
+    new_orders["Date"] = pd.to_datetime(new_orders["Date"])
+    orders_df_with_SL_TP = format_df_orders(new_orders)
+
+    # Simulation
+    row = new_orders.iloc[0]
+    result = simulate_SL_TP_row(row, df_stock_prices, orders_df_with_SL_TP)
+    print(result)
+
+    # Vérification
+    if expected_result is None:
+        assert result is None
+    else:
+        for key, val in expected_result.items():
+            assert result[key] == val
