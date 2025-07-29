@@ -3,14 +3,41 @@ import numpy as np
 import warnings
 
 class DataValidator:
-    def __init__(self, orders_df, stock_prices_df, bench_df_input=None):
+    def __init__(self, orders_df, stock_prices_df, stop_loss_input, take_profit_input, bench_df_input=None):
         self.orders_df = orders_df.copy()
         self.stock_prices_df = stock_prices_df.copy()
+        self.stop_loss = stop_loss_input
+        self.take_profit = take_profit_input
         self.bench_df_input = bench_df_input.copy()
-    
-    def check_orders(self):
-        expected_cols = {"Date", "Symbol", "Type", "Volume"}
-        assert set(self.orders_df.columns) == expected_cols, f"Colonnes attendues : {expected_cols}"
+
+    def check_columns_orders(self) :
+        required_columns = {"Date", "Symbol", "Volume", "Type"}
+        optional_columns = {"StopLoss", "TakeProfit"}
+
+        input_columns = set(self.orders_df.columns)
+
+        # Vérifie que toutes les colonnes obligatoires sont présentes
+        missing_columns = required_columns - input_columns
+        assert not missing_columns, \
+            f"Colonnes obligatoires manquantes : {missing_columns}"
+
+        # Vérifie qu'il n'y a pas de colonnes inconnues
+        allowed_columns = required_columns.union(optional_columns)
+        unknown_columns = input_columns - allowed_columns
+        assert not unknown_columns, \
+            f"Colonnes non reconnues dans le DataFrame : {unknown_columns}"
+
+        # Conflit entre colonne StopLoss et argument stop_loss
+        assert not ("StopLoss" in self.orders_df.columns and self.stop_loss is not None), \
+            "Vous ne pouvez pas à la fois passer une colonne 'StopLoss' et un argument stop_loss."
+
+        # Conflit entre colonne TakeProfit et argument take_profit
+        assert not ("TakeProfit" in self.orders_df.columns and self.take_profit is not None), \
+            "Vous ne pouvez pas à la fois passer une colonne 'TakeProfit' et un argument take_profit."
+
+
+
+    def check_columns_content(self):
 
         # Convert types
         self.orders_df["Date"] = pd.to_datetime(self.orders_df["Date"], errors="raise")
@@ -28,7 +55,6 @@ class DataValidator:
         lines_with_NaN = self.orders_df[self.orders_df.isnull().any(axis=1)]
         assert lines_with_NaN.empty, f"Des lignes avec NaN détectées :\n{lines_with_NaN}"
         
-        print("Orders dataframe check passed.")
         return self.orders_df
 
     def check_stock_prices(self):
@@ -82,6 +108,7 @@ class DataValidator:
         return self.orders_df, self.stock_prices_df, self.bench_df_input
 
     def validate_all(self):
-        self.check_orders()
+        self.check_columns_orders()
+        self.check_columns_content()
         self.check_stock_prices()
         return self.check_consistency()
