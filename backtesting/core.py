@@ -3,7 +3,9 @@ from .positions import PortfolioBuilder
 from .utils import (
     compute_portfolio_pnl,
     compute_portfolio_returns,
-    compute_drawdown
+    compute_drawdown,
+    calculate_avg_buying_price,
+    calculate_profit_transaction
 )
 from .metrics import *
 from .plotting import *
@@ -15,6 +17,8 @@ class BacktestEngine:
                  orders_df_input, 
                  prices_df_input, 
                  bench_df_input=pd.DataFrame(),
+                 stop_loss=None,
+                 take_profit=None,
                  transac_fees=0.001, 
                  borrow_rate=0.02, 
                  borrowing_cash_fees=0.01,
@@ -24,9 +28,16 @@ class BacktestEngine:
                  base=252):
 
         # TODO: inclure la vérification du df des benchmarks
-        validator = DataValidator(orders_df_input, prices_df_input, bench_df_input)
+        validator = DataValidator(orders_df_input, prices_df_input, stop_loss, take_profit, bench_df_input)
         orders_df, prices_df, bench_df = validator.validate_all()
+        orders_df, prices_df, bench_df = (orders_df_input, prices_df_input, bench_df_input)
+        orders_df.sort_values("Date", inplace=True)
 
+        # Ajout automatique si nécessaire
+        if "StopLoss" not in orders_df.columns and stop_loss is not None:
+            orders_df["StopLoss"] = stop_loss
+        if "TakeProfit" not in orders_df.columns and take_profit is not None:
+            orders_df["TakeProfit"] = take_profit
 
         self.orders_df = orders_df
         self.prices_df = prices_df
@@ -61,8 +72,12 @@ class BacktestEngine:
         )
         self.builder.build_df()
 
+        self.df_ABP = calculate_avg_buying_price(self.builder.df_volume_order, self.builder.df_volume_portfolio, self.builder.df_stock_prices_reindexed)
+        self.profit_long_positions, self.profit_short_positions = calculate_profit_transaction(self.builder.df_volume_portfolio, self.builder.df_stock_prices_reindexed, self.df_ABP)
+        self.dic_winners_losers_long_short, self.dic_stats_operations = compute_metrics_per_ops(self.profit_long_positions, self.profit_short_positions)    
+
         # Calculs de performance
-        self.cumulative_pnl_portfolio, self.daily_pnl_portfolio = compute_portfolio_pnl(self.builder.df_volume_portfolio, self.builder.df_stock_prices_reindexed)
+        self.cumulative_pnl_portfolio, self.daily_pnl_portfolio, self.daily_pnl_per_ticker = compute_portfolio_pnl(self.builder.df_volume_portfolio, self.builder.df_stock_prices_reindexed)
         
         max_cash_needed = self.builder.cash_consumption_with_costs.max()
 
@@ -70,7 +85,7 @@ class BacktestEngine:
         self.portfolio_returns = compute_portfolio_returns(self.daily_pnl_portfolio, self.builder.df_valeur_portfolio)
 
         # Calcul des métriques finales
-        self.metrics = compute_metrics(
+        self.portfolio_metrics = compute_metrics(
             self.portfolio_returns,
             self.cumulative_pnl_portfolio,
             self.drawdown,
@@ -79,6 +94,14 @@ class BacktestEngine:
             self.annual_discount_rate,
             self.base
         )
+
+        # TODO: s'occuper de df_metrics_max_tickers
+        self.df_metrics_per_ticker, self.df_metrics_max_tickers = metrics_tickers(self.builder.df_valeur_order, self.daily_pnl_per_ticker)
+
+        # self.metrics = self.portfolio_metrics
+        self.metrics = {**self.portfolio_metrics, **self.dic_stats_operations}
+
+        # self.metrics.update(self.dic_stats_operations)
 
         if not self.bench_df.empty :
             self.bench_expo_summary = compute_factor_exposition(self.portfolio_returns, self.bench_df)
@@ -100,6 +123,8 @@ class BacktestEngine:
         #     self.builder.cash_gains,
         # )
         self.returns_histogram = plot_histo_returns_distrib(self.portfolio_returns)
+        self.hit_ratio_pie = plot_pie_hit_ratio(self.dic_winners_losers_long_short)
+        self.volume_vs_perf_scatter_plot = plot_volume_against_perf(self.df_metrics_per_ticker)
 
 
     def summary(self):
@@ -113,3 +138,5 @@ class BacktestEngine:
         self.cumulative_pnl_graph.show()
         self.drawdown_graph.show()
         self.returns_histogram.show()
+        self.hit_ratio_pie.show()
+        self.volume_vs_perf_scatter_plot.show()
