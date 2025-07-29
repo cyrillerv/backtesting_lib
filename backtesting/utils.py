@@ -21,11 +21,12 @@ def compute_portfolio_pnl(
     daily_pnl : pd.Series
         Daily profit and loss.
     """
-
-    daily_pnl = (portfolio_volume.shift(1) * stock_prices.diff()).sum(axis=1)
+    # TODO: réfléchir si on ne peut pas renvoyer que deux variables au lieu de 3
+    daily_pnl_per_ticker = (portfolio_volume.shift(1) * stock_prices.diff())
+    daily_pnl = daily_pnl_per_ticker.sum(axis=1)
     cumulative_pnl = daily_pnl.cumsum()
 
-    return cumulative_pnl, daily_pnl
+    return cumulative_pnl, daily_pnl, daily_pnl_per_ticker
 
 
 def compute_portfolio_returns(
@@ -108,7 +109,7 @@ def compute_top_contributors(
     return top_worst_contributors, top_best_contributors
 
 
-# TODO: mettre les df en brut au début du fichier pour ne les écrire qu'une seule fois.
+# TODO: changer le nom et enlever buying et mettre opening price instead
 
 def calculate_avg_buying_price(df_volume_flows, df_volume_en_portefeuille, df_stock_price) :
     """
@@ -207,8 +208,78 @@ def calculate_profit_transaction(df_volume_en_portefeuille, df_stock_price, df_A
     ## 2.
     var_on_closing_date = df_stock_price[indicateur_close] / df_ABP_closing_dates - 1
 
-    # TODO: simplifier l'expression de ligne ci dessous
     ## 3.
-    profit_per_transaction = var_on_closing_date * ((df_volume_en_portefeuille.shift(1)[indicateur_close] > 0).astype(int) - (df_volume_en_portefeuille.shift(1)[indicateur_close]<0).astype(int))
+    profit_long_positions = (var_on_closing_date * (df_volume_en_portefeuille.shift(1)[indicateur_close] > 0).astype(int))
+    profit_short_positions = -(var_on_closing_date * (df_volume_en_portefeuille.shift(1)[indicateur_close] < 0).astype(int))
 
-    return profit_per_transaction
+    return profit_long_positions, profit_short_positions
+
+
+
+
+def simulate_SL_TP_row(row, df_stock_prices, orders_df_with_SL_TP):
+    """
+    Simule un stop loss (SL) ou un take profit (TP) pour une ligne d'ordre.
+    Retourne une ligne d'ordre inverse si SL ou TP est déclenché.
+    """
+    # TODO: voir combien le déclenchement du SL ou du TP a permi de gagner
+    # Pour faire le FIFO, on prend à partir de la date de transaction jusq'uà ce qu'on ait 0 stocks en portefeuille. (actuel)
+    # Pour faire le LIFO, au lieu de regarder jusqu'à quand on a plus de stocks en portefeuille, on va regarder jusqu'à quand on a nos stocks
+    # ex: si on achète 5 mais qu'on en avait déjà 10, on regarder jusq'uà ce qu'on retombe sur 10 (et donc que nos 5 soient écoulés)
+    # Il suffit de changer l'endate
+
+    # On isole l'évolution du nombre d'actions en portefeuille au cours du temps pour ce ticker
+    volume_en_portfolio = orders_df_with_SL_TP[orders_df_with_SL_TP['Symbol'] == row['Symbol']].sort_values("Date").set_index("Date")["Flows"].cumsum()
+    # Le premier chiffre négatif ou nul signifie qu'on a clôturer la position à cette date
+    end_date = (volume_en_portfolio * volume_en_portfolio.shift(1))[(volume_en_portfolio * volume_en_portfolio.shift(1)) <= 0].index.min()
+
+    symbol = row['Symbol']
+    start_date = row['Date']
+    if end_date :
+        partial_prices = df_stock_prices.loc[start_date:end_date, symbol].copy()
+    else : 
+        partial_prices = df_stock_prices.loc[start_date:, symbol].copy()
+
+    if partial_prices.empty:
+        return None  # Rien à faire s'il n'y a pas de données
+
+    entry_price = partial_prices.iloc[0]
+    TP_price = entry_price * (1 + row['TakeProfit'])
+    SL_price = entry_price * (1 + row['StopLoss'])
+
+    if row["Type"] == "Buy" :
+        TP_triggered = partial_prices[partial_prices >= TP_price]
+        SL_triggered = partial_prices[partial_prices <= SL_price]
+    else :
+        SL_triggered = partial_prices[partial_prices >= TP_price]
+        TP_triggered = partial_prices[partial_prices <= SL_price]
+
+    # Init
+    date_close = pd.Timestamp.max
+    SL_trigger, TP_trigger = False, False
+
+    if not TP_triggered.empty:
+        date_close = TP_triggered.index[0]
+        TP_trigger = True
+
+    if not SL_triggered.empty:
+        date_SL = SL_triggered.index[0]
+        if date_SL < date_close:
+            date_close = date_SL
+            TP_trigger = False
+            SL_trigger = True
+
+    # On récupère le dernier volume qu'on avait en portefeuille avant la clôture
+    volume_on_peut_close = abs(volume_en_portfolio[volume_en_portfolio.index <= date_close].iloc[-1])
+    if SL_trigger or TP_trigger:
+        return {
+            "Date": date_close,
+            "Symbol": symbol,
+            "Volume": min(row['Volume'], volume_on_peut_close), # On prend le min entre le volume en portfolio et le volume sur lequel on a mis un trigger
+            "Type": "Sell" if row['Type'] == "Buy" else "Buy",
+            "StopLoss": np.nan,
+            "TakeProfit": np.nan,
+            "Trigger": "StopLoss" if SL_trigger else "TakeProfit"
+        }
+
+    return None

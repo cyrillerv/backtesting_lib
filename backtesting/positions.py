@@ -1,6 +1,7 @@
 # Outils pour avg_buy_price, PnL, cash, etc.
 import numpy as np
 import pandas as pd
+from .utils import simulate_SL_TP_row
 
 class PortfolioBuilder() :
     """
@@ -30,14 +31,35 @@ class PortfolioBuilder() :
         self.borrowing_cash_fees = borrowing_cash_fees
         self.loan_cash_fees = loan_cash_fees
 
-        
+
+
+    def calc_SL_TP(self) :
+        # TODO: montrer ce que les SL ont permis d'éviter comme perte et ce le manque à gagner des TP. Montrer les bénéfices du SL et du TP sur le cash disponible.
+        # self.orders_df_input.sort_values("Date", inplace=True)
+        orders_df_with_SL_TP = self.orders_df_input.copy()
+        orders_df_with_SL_TP['Flows'] = orders_df_with_SL_TP["Volume"] * np.where(
+            orders_df_with_SL_TP["Type"] == "Buy", 1, -1
+        )
+
+        ## METHOD: FIFO
+        for _, row in self.orders_df_input.iterrows():
+            result = simulate_SL_TP_row(row, self.df_stock_prices, orders_df_with_SL_TP)
+            # A chaque fois on envoye un nouveau df d'ordres en input car il fatu prendre en compte les précédents SL et TP
+            if result is not None:
+                orders_df_with_SL_TP = pd.concat([orders_df_with_SL_TP, pd.DataFrame([result])], ignore_index=True)
+
+        # (Optionnel) trier pour faciliter la lecture
+        orders_df_with_SL_TP = orders_df_with_SL_TP.sort_values(by="Date").reset_index(drop=True)
+        self.orders_df_with_SL_TP = orders_df_with_SL_TP
+
+
     # On crée le df des volumes en portefeuille pour chaque date pour chaque ticker
     def build_df_portfolio_value(self) :
         """
         Construit le df qui contient la valeur de la position (currency du df en input) pour chaque ticker à chaque date.
         """
         # On crée le df des volumes en portefeuille pour chaque date pour chaque ticker
-        orders_df = self.orders_df_input.copy()
+        orders_df = self.orders_df_with_SL_TP.copy()
         orders_df["Sens_position"] = orders_df["Type"].map({"Buy": 1, "Sell": -1})
         orders_df["Volume_portfolio"] = orders_df["Sens_position"] * orders_df["Volume"]
         # Affiche le volume de transaction aux dates de transaction
@@ -131,6 +153,7 @@ class PortfolioBuilder() :
         
     
     def build_df(self) :
+        self.calc_SL_TP()
         self.build_df_portfolio_value()
         self.calculate_transac_fees()
         self.build_df_repo_costs()
