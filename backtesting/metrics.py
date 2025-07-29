@@ -49,3 +49,60 @@ def compute_factor_exposition(portfolio_returns, bench_df_input) :
     model_sm = sm.OLS(y_strategy_returns, X_sm).fit()
 
     return model_sm.summary()
+
+
+def compute_metrics_per_ops(profit_long_positions, profit_short_positions) :
+
+        all_perfs = (profit_long_positions.fillna(0) + profit_short_positions.fillna(0)).replace(0, np.nan)
+    
+        # TODO: gérer le cas où une opération a un profit de 0% pour le calcul du hit ratio, ce n'est pas pris en compe dans le dénominateur
+        nb_long_winners = profit_long_positions.gt(0).sum().sum()
+        nb_long_losers = profit_long_positions.lt(0).sum().sum()
+        nb_short_winners = profit_short_positions.gt(0).sum().sum()
+        nb_short_losers = profit_short_positions.lt(0).sum().sum()
+
+        # Variables pour graph
+        dic_winners_losers_long_short = {"Long - Gagnants": nb_long_winners, "Long - Perdants": nb_long_losers, "Short - Gagnants": nb_short_winners, "Short - Perdants":nb_short_losers}
+
+        # Variables pour stats
+        hit_ratio = (nb_long_winners + nb_short_winners) / (nb_long_winners + nb_long_losers + nb_short_winners + nb_short_losers)
+        median_winners = np.nanmedian(all_perfs[all_perfs > 0])
+        median_losers = np.nanmedian(all_perfs[all_perfs < 0])
+        average_proft_per_transaction = np.nanmean(all_perfs)
+        dic_stats_operations = {"Hit_ratio": hit_ratio, "Winner_median": median_winners, "Loser_median": median_losers, "Avg_profit_per_ops": average_proft_per_transaction}
+
+        return dic_winners_losers_long_short, dic_stats_operations
+
+
+
+import pandas as pd
+# TODO: ne calculer que les metrics ici et mettre les calculs de df dans le file positions.py
+def metrics_tickers(df_valeur_order, daily_pnl_per_ticker) :    
+    # TODO: on affiche toutes les opérations même celles qui ne sont pas clôturées in fine => réfléchir si on garde ça comme ça ou si on n'affiche que les opérations clôturées.
+    ## Statistiques par ticker
+    nb_transactions_par_ticker = df_valeur_order.notna().sum()
+
+    # On calcule la qty en euros allouée au total pour chaque ticker et on enlève ceux pour qui on en a 0 (les tickers dont les positions n'ont pas été clôturée)
+    total_amount_allocated_per_ticker = df_valeur_order.abs().sum()
+    # total_amount_allocated_per_ticker = total_amount_allocated_per_ticker[total_amount_allocated_per_ticker.ne(0)]
+
+    total_return_per_ticker = daily_pnl_per_ticker.sum() / total_amount_allocated_per_ticker
+    df_metrics_per_ticker = pd.concat([nb_transactions_par_ticker.rename("Nb transacs"), total_amount_allocated_per_ticker.rename("Volume $"), total_return_per_ticker.rename("Total_return")], axis=1).dropna()
+
+    best_performer_ticker = df_metrics_per_ticker.idxmax()["Total_return"]
+    best_performer_value = df_metrics_per_ticker.max()["Total_return"]
+
+    max_invested_ticker = df_metrics_per_ticker.abs().idxmax()["Volume $"]
+    max_invested_value = df_metrics_per_ticker.abs().max()["Volume $"]
+
+    max_operations_ticker  = df_metrics_per_ticker.idxmax()["Nb transacs"]
+    max_operations_value  = df_metrics_per_ticker.max()["Nb transacs"]
+
+    # C'est le df qui récap les tickers avec les plus de ....
+    df_metrics_max_tickers = pd.DataFrame({"Max_invested":{"Ticker": max_invested_ticker, "value": max_invested_value}, "Best_perfomer": {"Ticker": best_performer_ticker, "value": best_performer_value}, "Max_operations": {"Ticker": max_operations_ticker, "value": max_operations_value}}).T
+
+    return df_metrics_per_ticker, df_metrics_max_tickers
+    # Pour graphs
+    self.df_metrics_per_ticker = df_metrics_per_ticker
+    # Pour print
+    self.df_metrics_max_tickers = df_metrics_max_tickers
