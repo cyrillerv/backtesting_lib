@@ -3,7 +3,7 @@
 import plotly.graph_objs as go
 import plotly.express as px
 import numpy as np
-
+import pandas as pd
 
 def plot_cumulative_pnl(cumulative_pnl_portfolio):
     fig = go.Figure()
@@ -124,6 +124,7 @@ def plot_drawdown(drawdown):
 
 #     return fig
 
+# TODO: soit on affiche la perf quotidienne, soit on analyse la distribution des perfs par opérations
 def plot_histo_returns_distrib(df_perf) :
     ## Plot l'histogramme de la répartition des perf
 
@@ -149,3 +150,72 @@ def plot_histo_returns_distrib(df_perf) :
     # Affichage
     return fig
 
+
+def plot_pie_hit_ratio(dic_winners_losers_long_short) :
+    ## On plot le graph camembert des hits ratio
+
+    data_graph = dic_winners_losers_long_short
+
+    # Créer un graphique en camembert
+    fig = go.Figure(data=[go.Pie(labels=list(data_graph.keys()), values=list(data_graph.values()), hole=0.3, textinfo='percent+label')])
+
+    # Personnalisation du graphique
+    fig.update_layout(
+        title=f"Répartition trades gagnants/perdants en fonction de la position (Long/Short)",
+        template="plotly_dark",  # Thème sombre
+        annotations=[dict(
+            x=0.5,  # Position du texte au centre du graphique
+            y=0.5,
+            text="Total",
+            font_size=20,
+            showarrow=False
+        )],
+        showlegend=True
+    )
+
+    # Afficher le graphique
+    return fig
+
+
+def plot_volume_against_perf(df_metrics_per_ticker):
+    """
+    Crée un scatter plot du total return en fonction du volume $ attribué à chaque ticker.
+    Affiche les infos au survol.
+    """
+    # Vérification et conversion en DataFrame si nécessaire
+    if not isinstance(df_metrics_per_ticker, pd.DataFrame):
+        df_metrics_per_ticker = pd.DataFrame(df_metrics_per_ticker)
+
+    df_graph = df_metrics_per_ticker.dropna().reset_index()
+
+    # Vérifier si la colonne "Nom" existe, sinon ne pas l'inclure dans hover_data
+    hover_columns = ["Volume $", "Total_return"]
+    if "index" in df_graph.columns:
+        hover_columns.append("index")  # Ajoute "Nom" si disponible
+
+    # Création du scatter plot
+    fig = px.scatter(
+        df_graph, x="Volume $", y="Total_return",
+        title="Total return par ticker en fonction du volume $ qui lui a été attribué",
+        labels={"Volume $": "Volume $", "Total_return": "Total_return"},
+        template="plotly_dark",
+        hover_data=hover_columns  # Afficher les colonnes existantes
+    )
+
+    # Personnalisation des points
+    fig.update_traces(
+        marker=dict(size=10, color="deepskyblue", line=dict(width=1, color="white"))
+    )
+
+    # Personnalisation globale
+    fig.update_layout(
+        xaxis=dict(showgrid=True, gridcolor="gray"),
+        yaxis=dict(showgrid=True, gridcolor="gray"),
+        yaxis_tickformat=".0%",
+        plot_bgcolor="black",
+        paper_bgcolor="black",
+        font=dict(color="white", size=14)
+    )
+
+    # Affichage
+    return fig
