@@ -28,11 +28,11 @@ class DataValidator:
             f"Colonnes non reconnues dans le DataFrame : {unknown_columns}"
 
         # Conflit entre colonne StopLoss et argument stop_loss
-        assert not ("StopLoss" in self.orders_df.columns and self.stop_loss is not None), \
+        assert not ("StopLoss" in self.orders_df.columns and not np.isnan(self.stop_loss)), \
             "Vous ne pouvez pas à la fois passer une colonne 'StopLoss' et un argument stop_loss."
 
         # Conflit entre colonne TakeProfit et argument take_profit
-        assert not ("TakeProfit" in self.orders_df.columns and self.take_profit is not None), \
+        assert not ("TakeProfit" in self.orders_df.columns and not np.isnan(self.take_profit)), \
             "Vous ne pouvez pas à la fois passer une colonne 'TakeProfit' et un argument take_profit."
 
 
@@ -52,7 +52,7 @@ class DataValidator:
         assert not invalid_types, f"Valeurs invalides dans 'Type' : {invalid_types}"
 
         # Check for NaN rows
-        lines_with_NaN = self.orders_df[self.orders_df.isnull().any(axis=1)]
+        lines_with_NaN = self.orders_df[["Date", "Symbol", "Volume", "Type"]][self.orders_df.isnull().any(axis=1)]
         assert lines_with_NaN.empty, f"Des lignes avec NaN détectées :\n{lines_with_NaN}"
         
         return self.orders_df

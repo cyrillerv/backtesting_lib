@@ -6,6 +6,7 @@ sys.path.append(os.path.abspath("..."))
 
 import pandas as pd
 import numpy as np
+import pytest
 from pandas.testing import assert_series_equal
 from backtesting.utils import * 
 
@@ -83,7 +84,6 @@ def test_compute_portfolio_returns_basic():
     pd.testing.assert_series_equal(result, expected_returns)
 
 
-# TODO: gérer car nouvel output dans la fonctio principale
 def test_compute_portfolio_pnl_basic():
     dates = pd.date_range("2024-01-01", periods=4)
 
@@ -177,7 +177,6 @@ def test_fct_avg_buying_price() :
     assert (res.round(5) == df_ABP_check.round(5)).all().all()
 
 
-# TODO: gérer les deux nouveaux ouputs
 def test_fct_calc_profit_transaction() :
 
     # Dates fictives pour l'index (tu peux adapter selon ton cas)
@@ -277,8 +276,6 @@ def test_fct_calc_profit_transaction() :
 
 
 
-
-import pytest
 
 def format_df_orders(new_orders):
     new_orders = new_orders.copy()

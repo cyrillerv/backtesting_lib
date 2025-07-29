@@ -17,8 +17,8 @@ class BacktestEngine:
                  orders_df_input, 
                  prices_df_input, 
                  bench_df_input=pd.DataFrame(),
-                 stop_loss=None,
-                 take_profit=None,
+                 stop_loss=np.nan,
+                 take_profit=np.nan,
                  transac_fees=0.001, 
                  borrow_rate=0.02, 
                  borrowing_cash_fees=0.01,
@@ -34,9 +34,9 @@ class BacktestEngine:
         orders_df.sort_values("Date", inplace=True)
 
         # Ajout automatique si nécessaire
-        if "StopLoss" not in orders_df.columns and stop_loss is not None:
+        if "StopLoss" not in orders_df.columns:
             orders_df["StopLoss"] = stop_loss
-        if "TakeProfit" not in orders_df.columns and take_profit is not None:
+        if "TakeProfit" not in orders_df.columns:
             orders_df["TakeProfit"] = take_profit
 
         self.orders_df = orders_df

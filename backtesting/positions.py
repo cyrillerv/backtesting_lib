@@ -42,7 +42,7 @@ class PortfolioBuilder() :
         )
 
         ## METHOD: FIFO
-        for _, row in self.orders_df_input.iterrows():
+        for _, row in self.orders_df_input.dropna(how='all').iterrows():
             result = simulate_SL_TP_row(row, self.df_stock_prices, orders_df_with_SL_TP)
             # A chaque fois on envoye un nouveau df d'ordres en input car il fatu prendre en compte les précédents SL et TP
             if result is not None:
