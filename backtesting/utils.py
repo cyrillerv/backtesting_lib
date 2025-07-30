@@ -209,8 +209,16 @@ def calculate_profit_transaction(df_volume_en_portefeuille, df_stock_price, df_A
     var_on_closing_date = df_stock_price[indicateur_close] / df_ABP_closing_dates - 1
 
     ## 3.
-    profit_long_positions = (var_on_closing_date * (df_volume_en_portefeuille.shift(1)[indicateur_close] > 0).astype(int))
-    profit_short_positions = -(var_on_closing_date * (df_volume_en_portefeuille.shift(1)[indicateur_close] < 0).astype(int))
+    # On est obligé de faire deux df séparés (un close long et un close short) si on close un short et un long en même temps, on ne peut pas aggréger car on ne sell pas nécessairement ce qu'on a acheter (stop loss et take profit).
+    # Mettre des 1 partout où on close un long, et des nan autrement.
+    data = np.where(df_volume_en_portefeuille.shift(1)[indicateur_close] > 0, 1, np.nan)
+    df_indic_long_close = pd.DataFrame(data=data, index=df_volume_en_portefeuille.index, columns=df_volume_en_portefeuille.columns)
+    # Mettre des -1 partout où on close un short, et des nan autrement.
+    data = np.where(df_volume_en_portefeuille.shift(1)[indicateur_close] < 0, -1, np.nan)
+    df_indic_short_close = pd.DataFrame(data=data, index=df_volume_en_portefeuille.index, columns=df_volume_en_portefeuille.columns)
+
+    profit_long_positions = var_on_closing_date * df_indic_long_close
+    profit_short_positions = var_on_closing_date * df_indic_short_close
 
     return profit_long_positions, profit_short_positions
 
