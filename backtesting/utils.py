@@ -238,11 +238,13 @@ def simulate_SL_TP_row(row, df_stock_prices, orders_df_with_SL_TP):
 
     # On isole l'évolution du nombre d'actions en portefeuille au cours du temps pour ce ticker
     volume_en_portfolio = orders_df_with_SL_TP[orders_df_with_SL_TP['Symbol'] == row['Symbol']].sort_values("Date").set_index("Date")["Flows"].cumsum()
+    start_date = row['Date']
+    volume_en_portfolio = volume_en_portfolio.loc[start_date:].copy()
     # Le premier chiffre négatif ou nul signifie qu'on a clôturer la position à cette date
     end_date = (volume_en_portfolio * volume_en_portfolio.shift(1))[(volume_en_portfolio * volume_en_portfolio.shift(1)) <= 0].index.min()
 
     symbol = row['Symbol']
-    start_date = row['Date']
+    
     if end_date :
         partial_prices = df_stock_prices.loc[start_date:end_date, symbol].copy()
     else : 
@@ -252,15 +254,19 @@ def simulate_SL_TP_row(row, df_stock_prices, orders_df_with_SL_TP):
         return None  # Rien à faire s'il n'y a pas de données
 
     entry_price = partial_prices.iloc[0]
-    TP_price = entry_price * (1 + row['TakeProfit'])
-    SL_price = entry_price * (1 + row['StopLoss'])
 
     if row["Type"] == "Buy" :
+        TP_price = entry_price * (1 + row['TakeProfit'])
+        SL_price = entry_price * (1 + row['StopLoss'])
+
         TP_triggered = partial_prices[partial_prices >= TP_price]
         SL_triggered = partial_prices[partial_prices <= SL_price]
     else :
-        SL_triggered = partial_prices[partial_prices >= TP_price]
-        TP_triggered = partial_prices[partial_prices <= SL_price]
+        TP_price = entry_price * (1 - row['TakeProfit'])
+        SL_price = entry_price * (1 - row['StopLoss'])
+
+        TP_triggered = partial_prices[partial_prices <= TP_price]
+        SL_triggered = partial_prices[partial_prices >= SL_price]        
 
     # Init
     date_close = pd.Timestamp.max
