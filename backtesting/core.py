@@ -27,10 +27,9 @@ class BacktestEngine:
                  annual_discount_rate=0.03,
                  base=252):
 
-        # TODO: inclure la vérification du df des benchmarks
+        # TODO: inclure la vérification du df des benchmarks + PCA
         validator = DataValidator(orders_df_input, prices_df_input, stop_loss, take_profit, bench_df_input)
         orders_df, prices_df, bench_df = validator.validate_all()
-        orders_df, prices_df, bench_df = (orders_df_input, prices_df_input, bench_df_input)
         orders_df.sort_values("Date", inplace=True)
 
         # Ajout automatique si nécessaire
@@ -104,8 +103,11 @@ class BacktestEngine:
         # self.metrics.update(self.dic_stats_operations)
 
         if not self.bench_df.empty :
-            self.bench_expo_summary = compute_factor_exposition(self.portfolio_returns, self.bench_df)
-            print(self.bench_expo_summary)
+            self.dic_metrics_regression, self.coef_dict_regression = run_regression_factor_exposition(self.portfolio_returns, self.bench_df)
+            self.bar_chart_factor_expo = plot_factor_exposition(self.coef_dict_regression)
+            print(self.dic_metrics_regression)
+            # self.bench_expo_summary = compute_factor_exposition(self.portfolio_returns, self.bench_df)
+            # print(self.bench_expo_summary)
 
         # Création des graphs plotly
         # self.cash_consumption_graph = plot_cash_consumption(self.builder.cash_consumption_with_costs)
@@ -140,3 +142,5 @@ class BacktestEngine:
         self.returns_histogram.show()
         self.hit_ratio_pie.show()
         self.volume_vs_perf_scatter_plot.show()
+        if not self.bench_df.empty :
+            self.bar_chart_factor_expo.show()

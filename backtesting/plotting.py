@@ -219,3 +219,31 @@ def plot_volume_against_perf(df_metrics_per_ticker):
 
     # Affichage
     return fig
+
+
+
+def plot_factor_exposition(coef_dict) :
+
+    # Trier par valeur absolue et ne garder que les 10 plus importants
+    top_coef_items = sorted(coef_dict.items(), key=lambda x: abs(x[1]), reverse=True)[:10]
+
+    # Extraire noms et valeurs
+    factors = [k for k, _ in top_coef_items]
+    coefs = [v for _, v in top_coef_items]
+
+    # Créer le bar plot
+    fig = go.Figure(data=[go.Bar(
+        x=factors,
+        y=coefs,
+        marker_color=['red' if c < 0 else 'green' for c in coefs]
+    )])
+
+    fig.update_layout(
+        title='Top 10 coefficients Ridge par facteur (valeur absolue)',
+        xaxis_title='Facteurs',
+        yaxis_title='Coefficient',
+        yaxis=dict(zeroline=True, zerolinewidth=2, zerolinecolor='black'),
+        template='plotly_white'
+    )
+
+    return fig
