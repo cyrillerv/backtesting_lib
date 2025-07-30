@@ -141,13 +141,14 @@ def calculate_avg_buying_price(df_volume_flows, df_volume_en_portefeuille, df_st
     dic_ABP = {}
 
     for idx in df_volume_flows.index:
-        for stock in df_volume_flows.columns:
+        df_volume_flows_filtered = df_volume_flows.loc[idx].dropna().copy()
+        for stock in df_volume_flows_filtered.index:
 
             key = (idx, stock)
 
             # Ancienne valeur de ABP
-            prev_key = (df_volume_flows.index[df_volume_flows.index.get_loc(idx) - 1], stock) \
-                if df_volume_en_portefeuille.index.get_loc(idx) > 0 else None
+            stock_keys = [key[0] for key in dic_ABP if key[1] == stock]
+            prev_key = (max(stock_keys) if stock_keys else None, stock)
 
             abp_prev = dic_ABP.get(prev_key, 0)
 
