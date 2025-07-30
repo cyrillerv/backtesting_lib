@@ -197,7 +197,15 @@ class BacktestEngine:
         #     self.builder.cash_costs,
         #     self.builder.cash_gains,
         # )
-        self.returns_histogram = plot_histo_returns_distrib(self.portfolio_returns)
+
+        # On met dans une array toutes les perfs de toutes les opérations
+        raw_data_perf_long = self.profit_long_positions.values.flatten()
+        raw_data_perf_short = self.profit_short_positions.values.flatten()
+        data_cleaned_long = raw_data_perf_long[~np.isnan(raw_data_perf_long)]
+        data_cleaned_short = raw_data_perf_short[~np.isnan(raw_data_perf_short)]
+        self.all_perfs_operations = np.concatenate([data_cleaned_long, data_cleaned_short])
+
+        self.returns_histogram = plot_distrib_ops_returns(self.all_perfs_operations)
         self.hit_ratio_pie = plot_pie_hit_ratio(self.dic_winners_losers_long_short)
         self.volume_vs_perf_scatter_plot = plot_volume_against_perf(self.df_metrics_per_ticker)
 

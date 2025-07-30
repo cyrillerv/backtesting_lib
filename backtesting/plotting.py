@@ -124,31 +124,34 @@ def plot_drawdown(drawdown):
 
 #     return fig
 
-# TODO: soit on affiche la perf quotidienne, soit on analyse la distribution des perfs par opérations
-def plot_histo_returns_distrib(df_perf) :
-    ## Plot l'histogramme de la répartition des perf
 
-    raw_data_perf = df_perf.values.flatten() * 100
-    data_cleaned = raw_data_perf[~np.isnan(raw_data_perf)]
+def plot_distrib_ops_returns(perf_array):
+    """
+    Plot the histogram of operation performance distribution (in percentage).
+    perf_array should contain decimal values (e.g., 0.15 for 15%).
+    """
+    fig = px.histogram(perf_array, 
+                       title="Distribution des performances des opérations", 
+                       labels={"value": "Performance (%)"}, 
+                       template="plotly_dark")
 
-    # Création de l'histogramme
-    fig = px.histogram(data_cleaned, 
-                    title="Distribution des perf des opérations", 
-                    labels={"value": "Performance en %"}, 
-                    template="plotly_dark")
-
-    # Personnalisation
+    # Customization
     fig.update_traces(marker=dict(color="deepskyblue", line=dict(width=1, color="white")))
     fig.update_layout(
-        xaxis=dict(showgrid=True, gridcolor="gray"),
-        yaxis=dict(showgrid=True, gridcolor="gray", title="Freq"),
+        xaxis=dict(
+            showgrid=True, 
+            gridcolor="gray", 
+            tickformat=".0%",   # <- Format pourcentage
+            title="Performance (%)"
+        ),
+        yaxis=dict(showgrid=True, gridcolor="gray", title="Fréquence"),
         plot_bgcolor="black",
         paper_bgcolor="black",
         font=dict(color="white", size=14)
     )
 
-    # Affichage
     return fig
+
 
 
 def plot_pie_hit_ratio(dic_winners_losers_long_short) :
