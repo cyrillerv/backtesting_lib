@@ -12,6 +12,8 @@ from .plotting import *
 
 from .data_validator import DataValidator
 
+# TODO: ajouter arg FIFO ou LIFO pour le SL & TP
+# TODO: ajouter possiblité de choisir régression entrre OLS et Ridge (si OLS, faire une PCA dans DataValidator)
 class BacktestEngine:
     def __init__(self, 
                  orders_df_input, 
@@ -19,6 +21,7 @@ class BacktestEngine:
                  bench_df_input=pd.DataFrame(),
                  stop_loss=np.nan,
                  take_profit=np.nan,
+                 close_all=True, 
                  transac_fees=0.001, 
                  borrow_rate=0.02, 
                  borrowing_cash_fees=0.01,
@@ -27,7 +30,6 @@ class BacktestEngine:
                  annual_discount_rate=0.03,
                  base=252):
 
-        # TODO: inclure la vérification du df des benchmarks + PCA
         validator = DataValidator(orders_df_input, prices_df_input, stop_loss, take_profit, bench_df_input)
         orders_df, prices_df, bench_df = validator.validate_all()
         orders_df.sort_values("Date", inplace=True)
@@ -41,6 +43,7 @@ class BacktestEngine:
         self.orders_df = orders_df
         self.prices_df = prices_df
         self.bench_df = bench_df
+        self.close_all = close_all
         self.transac_fees = transac_fees
         self.borrow_rate = borrow_rate
         self.borrowing_cash_fees = borrowing_cash_fees
@@ -62,6 +65,7 @@ class BacktestEngine:
         self.builder = PortfolioBuilder(
             orders_df_input=self.orders_df,
             df_stock_prices=self.prices_df,
+            close_all=self.close_all,
             transac_fees=self.transac_fees,
             borrow_rate=self.borrow_rate,
             base=self.base,
@@ -70,6 +74,14 @@ class BacktestEngine:
             loan_cash_fees=self.loan_cash_fees
         )
         self.builder.build_df()
+
+        if not self.close_all :
+            unclosed_positions = self.builder.df_valeur_portfolio.iloc[-1]
+            last_day = unclosed_positions.name.date()
+            nb_unclosed_positions = unclosed_positions.ne(0).sum()
+            valeur_unclosed_positions = unclosed_positions.abs().sum()
+            print(f"Au dernier jour ({last_day}), il y a {nb_unclosed_positions} positions not closed d'une valeur totale de {valeur_unclosed_positions:.2f}$.")
+
 
         self.df_ABP = calculate_avg_buying_price(self.builder.df_volume_order, self.builder.df_volume_portfolio, self.builder.df_stock_prices_reindexed)
         self.profit_long_positions, self.profit_short_positions = calculate_profit_transaction(self.builder.df_volume_portfolio, self.builder.df_stock_prices_reindexed, self.df_ABP)

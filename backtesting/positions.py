@@ -15,6 +15,7 @@ class PortfolioBuilder() :
     def __init__(self, 
                  orders_df_input, 
                  df_stock_prices,
+                 close_all,
                  transac_fees,
                  borrow_rate,
                  base,
@@ -24,6 +25,7 @@ class PortfolioBuilder() :
                  ) :
         self.orders_df_input = orders_df_input
         self.df_stock_prices = df_stock_prices
+        self.close_all = close_all
         self.transac_fees = transac_fees
         self.borrow_rate = borrow_rate
         self.base = base
@@ -59,7 +61,7 @@ class PortfolioBuilder() :
         Construit le df qui contient la valeur de la position (currency du df en input) pour chaque ticker à chaque date.
         """
         # On crée le df des volumes en portefeuille pour chaque date pour chaque ticker
-        orders_df = self.orders_df_with_SL_TP.copy()
+        orders_df = self.order_df_final.copy()
         orders_df["Sens_position"] = orders_df["Type"].map({"Buy": 1, "Sell": -1})
         orders_df["Volume_portfolio"] = orders_df["Sens_position"] * orders_df["Volume"]
         # Affiche le volume de transaction aux dates de transaction
@@ -154,7 +156,22 @@ class PortfolioBuilder() :
     
     def build_df(self) :
         self.calc_SL_TP()
+        self.order_df_final = self.orders_df_with_SL_TP
         self.build_df_portfolio_value()
+        if self.close_all :
+            # On regarde les positions qui n'ont jamais été clôturées.
+            self.unclosed_positions = self.df_volume_portfolio.iloc[-1].replace(0, np.nan).dropna()
+            # Puis on construit le df d'ordres pour les clôturer au dernier jour du backtest.
+            self.unclosed_positions_orders = self.unclosed_positions.rename("Volume").to_frame().copy()
+            self.unclosed_positions_orders.reset_index(inplace=True)
+            self.unclosed_positions_orders['Date'] = self.unclosed_positions.name
+            self.unclosed_positions_orders["Type"] = np.where(self.unclosed_positions_orders["Volume"] > 0, "Sell", "Buy")
+            self.unclosed_positions_orders["Volume"] = self.unclosed_positions_orders["Volume"].abs()
+            self.unclosed_positions_orders["Trigger"] = "AutomaticClosing"
+            self.order_df_final = pd.concat([self.orders_df_with_SL_TP, self.unclosed_positions_orders], axis=0)
+            # Et on relance la construction des df avec le df d'ordres qui inclut la clôture automatiques des ordres.
+            self.build_df_portfolio_value()
+
         self.calculate_transac_fees()
         self.build_df_repo_costs()
         self.calculate_collat_short()
