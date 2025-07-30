@@ -250,3 +250,143 @@ def plot_factor_exposition(coef_dict) :
     )
 
     return fig
+
+
+def plot_sector_exposure(positions_melted: pd.DataFrame, sector_mapping: dict):
+    # engine.builder.df_valeur_portfolio
+    """
+    Affiche un graphique Plotly de l'exposition sectorielle dans le temps.
+
+    - sector_mapping: dict {ticker: sector}
+    """
+
+    # Étape 3 - Calculer l’exposition sectorielle par date
+    sector_exposure = (
+        positions_melted
+        .groupby(['date', 'sector'])['value']
+        .sum()
+        .reset_index()
+    )
+
+    # Calculer la somme absolue des valeurs par date
+    abs_total_by_date = (
+        sector_exposure
+        .groupby('date')['value']
+        .transform(lambda x: x.abs().sum())
+    )
+
+    # Calculer l’exposition relative (même si positions short)
+    sector_exposure['relative_exposure'] = sector_exposure['value'] / abs_total_by_date
+
+
+    # Étape 4 - Pivot pour avoir secteurs en colonnes
+    df_pivot = sector_exposure.pivot(index='date', columns='sector', values='relative_exposure').fillna(0)
+
+    # Étape 5 - Créer le graphique Plotly
+    fig = go.Figure()
+
+    for sector in df_pivot.columns:
+        fig.add_trace(go.Scatter(
+            x=df_pivot.index,
+            y=df_pivot[sector],
+            # stackgroup='one',
+            name=sector
+        ))
+
+    fig.update_layout(
+        title="Exposition Sectorielle dans le Temps",
+        yaxis_title="Pourcentage du portefeuille",
+        xaxis_title="Date",
+        # hovermode="x unified",
+        template="plotly_white"
+    )
+
+    return fig
+
+
+# TODO: mettre un bar chart plutôt qu'un pie chart sera peut être plus visible => on pourra ne pas mettre en %
+# def create_pie_chart_amount_sector(position, positions_melted) :
+
+#     # 1. Calcul des positions longues par secteur
+#     amount_pos_sector = (
+#         positions_melted
+#         .groupby("sector")["value"]
+#         .sum()
+#         .abs()
+#     )
+
+#     # 2. Nettoyage : retirer les secteurs à 0 ou NaN
+#     amount_pos_sector = amount_pos_sector[amount_pos_sector > 0].dropna()
+
+#     # 3. Conversion en dictionnaire (optionnel)
+#     data_graph = amount_pos_sector.to_dict()
+
+#     # 4. Création du graphique
+#     fig = go.Figure(data=[
+#         go.Pie(
+#             labels=list(data_graph.keys()),
+#             values=list(data_graph.values()),
+#             hole=0.3,
+#             textinfo='percent+label'
+#         )
+#     ])
+
+#     # 5. Personnalisation
+#     fig.update_layout(
+#         title=f"Répartition sectorielle des positions {position}",
+#         template="plotly_dark",  # Thème sombre
+#         annotations=[dict(
+#             x=0.5,
+#             y=0.5,
+#             text=position.capitalize(),
+#             font_size=20,
+#             showarrow=False
+#         )],
+#         showlegend=True
+#     )
+
+#     return fig
+
+
+
+
+
+def create_sector_allocation_chart(position, positions_melted):
+    """
+    Crée un bar chart représentant la répartition sectorielle
+    des positions (long ou short), trié par importance.
+
+    Parameters:
+    - position: str, "long" ou "short"
+    - positions_melted: DataFrame au format long avec colonnes ['date', 'ticker', 'value', 'sector']
+    """
+
+    # TODO: mettre ça avec les autres df
+    # 2. Calcul des montants par secteur
+    amount_pos_sector = (
+        positions_melted
+        .groupby("sector")["value"]
+        .sum()
+        .abs()
+        .sort_values(ascending=False)
+        .head(10)  # Limiter aux 10 premiers secteurs
+    )
+
+    # 3. Génération du bar chart
+    fig = go.Figure(data=[
+        go.Bar(
+            x=amount_pos_sector.index,
+            y=amount_pos_sector.values,
+            marker_color='lightskyblue'
+        )
+    ])
+
+    fig.update_layout(
+        title=f"Top 10 secteurs - positions {position}",
+        xaxis_title="Secteur",
+        yaxis_title="Montant absolu",
+        template="plotly_dark"
+    )
+
+    return fig
+

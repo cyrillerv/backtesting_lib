@@ -15,6 +15,7 @@ class PortfolioBuilder() :
     def __init__(self, 
                  orders_df_input, 
                  df_stock_prices,
+                 sector_mapping,
                  close_all,
                  transac_fees,
                  borrow_rate,
@@ -25,6 +26,7 @@ class PortfolioBuilder() :
                  ) :
         self.orders_df_input = orders_df_input
         self.df_stock_prices = df_stock_prices
+        self.sector_mapping = sector_mapping
         self.close_all = close_all
         self.transac_fees = transac_fees
         self.borrow_rate = borrow_rate
@@ -152,7 +154,17 @@ class PortfolioBuilder() :
         self.cash_gains = self.cumulative_flows.clip(upper=0) * self.loan_cash_fees / self.base
 
         self.cash_consumption_with_costs = self.cumulative_flows + self.cash_costs + self.cash_gains
-        
+
+    def calc_df_sectors(self) :
+        # Étape 1 - Convertir le DataFrame au format long (melt)
+        self.positions_melted = self.df_valeur_portfolio.reset_index().melt(id_vars='index', var_name='ticker', value_name='value')
+        self.positions_melted.rename(columns={'index': 'date'}, inplace=True)
+
+        # Étape 2 - Ajouter les secteurs
+        self.positions_melted['sector'] = self.positions_melted['ticker'].map(self.sector_mapping).fillna('Unknown')
+
+        self.positions_melted_long = self.positions_melted[self.positions_melted["value"] > 0].copy()
+        self.positions_melted_short = self.positions_melted[self.positions_melted["value"] < 0].copy()
     
     def build_df(self) :
         self.calc_SL_TP()
@@ -168,7 +180,7 @@ class PortfolioBuilder() :
             self.unclosed_positions_orders["Type"] = np.where(self.unclosed_positions_orders["Volume"] > 0, "Sell", "Buy")
             self.unclosed_positions_orders["Volume"] = self.unclosed_positions_orders["Volume"].abs()
             self.unclosed_positions_orders["Trigger"] = "AutomaticClosing"
-            self.order_df_final = pd.concat([self.orders_df_with_SL_TP, self.unclosed_positions_orders], axis=0)
+            self.order_df_final = pd.concat([self.order_df_final, self.unclosed_positions_orders], axis=0)
             # Et on relance la construction des df avec le df d'ordres qui inclut la clôture automatiques des ordres.
             self.build_df_portfolio_value()
 
@@ -176,6 +188,7 @@ class PortfolioBuilder() :
         self.build_df_repo_costs()
         self.calculate_collat_short()
         self.calc_portfolio_flows()
+        self.calc_df_sectors()
 
     def get_results(self):
         return {

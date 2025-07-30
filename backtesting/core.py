@@ -21,6 +21,7 @@ class BacktestEngine:
                  orders_df_input: pd.DataFrame, 
                  prices_df_input: pd.DataFrame, 
                  bench_df_input: pd.DataFrame = pd.DataFrame(),
+                 sector_mapping: dict = {},
                  stop_loss: float = np.nan,
                  take_profit: float = np.nan,
                  close_all: bool = True, 
@@ -91,6 +92,7 @@ class BacktestEngine:
         """
 
 
+        # TODO: Ajouter la verif de sector_mapping => il faut que pour chaque ticker dans df_order il soit en clé dans sector_mapping
         validator = DataValidator(orders_df_input, prices_df_input, stop_loss, take_profit, bench_df_input)
         orders_df, prices_df, bench_df = validator.validate_all()
         orders_df.sort_values("Date", inplace=True)
@@ -104,6 +106,7 @@ class BacktestEngine:
         self.orders_df = orders_df
         self.prices_df = prices_df
         self.bench_df = bench_df
+        self.sector_mapping = sector_mapping
         self.close_all = close_all
         self.transac_fees = transac_fees
         self.borrow_rate = borrow_rate
@@ -126,6 +129,7 @@ class BacktestEngine:
         self.builder = PortfolioBuilder(
             orders_df_input=self.orders_df,
             df_stock_prices=self.prices_df,
+            sector_mapping=self.sector_mapping,
             close_all=self.close_all,
             transac_fees=self.transac_fees,
             borrow_rate=self.borrow_rate,
@@ -208,6 +212,10 @@ class BacktestEngine:
         self.returns_histogram = plot_distrib_ops_returns(self.all_perfs_operations)
         self.hit_ratio_pie = plot_pie_hit_ratio(self.dic_winners_losers_long_short)
         self.volume_vs_perf_scatter_plot = plot_volume_against_perf(self.df_metrics_per_ticker)
+        if self.sector_mapping != {} :
+            self.graph_sector_exposure = plot_sector_exposure(self.builder.positions_melted, self.sector_mapping)
+            self.allocation_sector_long = create_sector_allocation_chart("long", self.builder.positions_melted_long)
+            self.allocation_sector_short = create_sector_allocation_chart("short", self.builder.positions_melted_short)
 
 
     def summary(self):
@@ -225,3 +233,7 @@ class BacktestEngine:
         self.volume_vs_perf_scatter_plot.show()
         if not self.bench_df.empty :
             self.bar_chart_factor_expo.show()
+        if self.sector_mapping != {} :
+            self.graph_sector_exposure.show()
+            self.allocation_sector_long.show()
+            self.allocation_sector_short.show()
