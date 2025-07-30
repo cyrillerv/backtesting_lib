@@ -14,21 +14,82 @@ from .data_validator import DataValidator
 
 # TODO: ajouter arg FIFO ou LIFO pour le SL & TP
 # TODO: ajouter possiblité de choisir régression entrre OLS et Ridge (si OLS, faire une PCA dans DataValidator)
+# TODO: changer le nom de la colonne 'Symbol' pour mettre 'Ticker qui est plus explicite.
+# TODO: changer borrow_rate par qc de plus explicite
 class BacktestEngine:
     def __init__(self, 
-                 orders_df_input, 
-                 prices_df_input, 
-                 bench_df_input=pd.DataFrame(),
-                 stop_loss=np.nan,
-                 take_profit=np.nan,
-                 close_all=True, 
-                 transac_fees=0.001, 
-                 borrow_rate=0.02, 
-                 borrowing_cash_fees=0.01,
-                 loan_cash_fees=0.0,
-                 maintenance_margin_pct=1.3,
-                 annual_discount_rate=0.03,
-                 base=252):
+                 orders_df_input: pd.DataFrame, 
+                 prices_df_input: pd.DataFrame, 
+                 bench_df_input: pd.DataFrame = pd.DataFrame(),
+                 stop_loss: float = np.nan,
+                 take_profit: float = np.nan,
+                 close_all: bool = True, 
+                 transac_fees: float = 0.001, 
+                 borrow_rate: float = 0.02, 
+                 borrowing_cash_fees: float = 0.01,
+                 loan_cash_fees: float = 0.0,
+                 maintenance_margin_pct: float = 1.3,
+                 annual_discount_rate: float = 0.03,
+                 base: int = 252):
+        """
+        orders_df_input (pd.DataFrame): 
+            DataFrame containing the trading orders executed by the strategy.
+            Expected columns:
+                - 'Date' (datetime): date of the order
+                - 'Symbol' (str): asset ticker
+                - 'Volume' (int > 0): quantity of the asset traded
+                - 'Type' (str): 'Buy' or 'Sell'
+
+        prices_df_input (pd.DataFrame): 
+            DataFrame containing historical prices of the traded assets.
+            - Index: datetime (observation dates)
+            - Columns: asset tickers (must match those in `orders_df_input`)
+            - Values: float (asset price at the given date)
+
+        bench_df_input (pd.DataFrame, optional): 
+            DataFrame containing prices of a benchmark (e.g., market index or reference asset).
+            - Default: empty DataFrame
+            - Index: datetime
+            - Columns: benchmark tickers
+            - Values: float (benchmark price at the given date)
+
+        stop_loss (float < 0, optional): 
+            Loss threshold (as a %) at which a position is automatically closed. 
+            Default: NaN (disabled).
+
+        take_profit (float > 0, optional): 
+            Profit threshold (as a %) at which a position is automatically closed. 
+            Default: NaN (disabled).
+
+        close_all (bool, optional): 
+            If True, forces the closing of all open positions at the end of the backtest period. 
+            Default: True.
+
+        transac_fees (float > 0, optional): 
+            Transaction fee (for both buy and sell), expressed as a percentage. 
+            Default: 0.001 (0.1%).
+
+        borrow_rate (float > 0, optional): 
+            Annual interest rate for borrowing assets (used in short positions). 
+            Default: 0.02 (2%).
+
+        borrowing_cash_fees (float, optional): 
+            Annual fee for borrowing cash. 
+            Default: 0.01 (1%).
+
+        loan_cash_fees (float, optional): 
+            Annual fee applied to cash lending. 
+            Default: 0.0.
+
+        maintenance_margin_pct (float, optional): 
+            Maintenance margin percentage required when holding short positions (e.g., 1.3 = 130%). 
+            Default: 1.3.
+
+        annual_discount_rate (float, optional): 
+            Annual discount rate used for financial calculations (e.g., NPV). 
+            Default: 0.03 (3%).
+        """
+
 
         validator = DataValidator(orders_df_input, prices_df_input, stop_loss, take_profit, bench_df_input)
         orders_df, prices_df, bench_df = validator.validate_all()
