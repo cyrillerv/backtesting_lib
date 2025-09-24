@@ -8,7 +8,7 @@ def compute_metrics(portfolio_returns, cumulative_pnl_portfolio, drawdown, df_vo
     # Convertir en taux sans risque quotidien
     rf_daily = (1 + rf_annual)**(1/252) - 1
     average_return = portfolio_returns.mean()
-    
+
     excess_return = average_return - rf_daily
     annualized_sharpe_ratio = (excess_return / portfolio_returns.std() * np.sqrt(base)
                             if portfolio_returns.std() != 0 else np.nan)
@@ -101,13 +101,16 @@ def compute_metrics_per_ops(profit_long_positions, profit_short_positions) :
         dic_winners_losers_long_short = {"Long - Gagnants": nb_long_winners, "Long - Perdants": nb_long_losers, "Short - Gagnants": nb_short_winners, "Short - Perdants":nb_short_losers}
 
         # Variables pour stats
-        hit_ratio = (nb_long_winners + nb_short_winners) / (nb_long_winners + nb_long_losers + nb_short_winners + nb_short_losers)
+        total_trades = nb_long_winners + nb_long_losers + nb_short_winners + nb_short_losers
+        hit_ratio = ((nb_long_winners + nb_short_winners) / total_trades
+                    if total_trades > 0 else np.nan)
         perfs_vals = all_perfs.values.ravel() # aplatir les data
         pos_perf = perfs_vals[perfs_vals > 0] 
         neg_perf = perfs_vals[perfs_vals < 0] 
         median_winners = np.nanmedian(pos_perf) if pos_perf.size else np.nan
         median_losers = np.nanmedian(neg_perf) if neg_perf.size else np.nan 
-        average_proft_per_transaction = np.nanmean(all_perfs)
+        valid_perfs = perfs_vals[~np.isnan(perfs_vals)]
+        average_proft_per_transaction = np.nan if valid_perfs.size == 0 else np.nanmean(valid_perfs)
         dic_stats_operations = {"Hit_ratio": hit_ratio, "Winner_median": median_winners, "Loser_median": median_losers, "Avg_profit_per_ops": average_proft_per_transaction}
 
         return dic_winners_losers_long_short, dic_stats_operations
