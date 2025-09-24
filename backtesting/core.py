@@ -140,6 +140,9 @@ class BacktestEngine:
         )
         self.builder.build_df()
 
+        # On vérifie qu'il y ait au moins une position prise qui ait duré plus d'un temps 
+        assert not (self.builder.df_volume_portfolio == 0).values.all(), "Suite à l'aggrégation des volumes en fonction de la colonne Date, il semble qu'aucune transaction n'ait duré plus d'un temps (fréquence de votre colonne date)."
+
         if not self.close_all :
             unclosed_positions = self.builder.df_valeur_portfolio.iloc[-1]
             last_day = unclosed_positions.name.date()
