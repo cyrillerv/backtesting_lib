@@ -122,10 +122,7 @@ class PortfolioBuilder() :
         # maintenance_margin_pct = 1.3 # 130%
         df_collat_short = self.df_valeur_portfolio_short * -self.maintenance_margin_pct
         df_collat_short.fillna(0, inplace=True)
-        df_margin_call = df_collat_short.diff()
-
-        df_margin_call + self.df_valeur_order
-
+        df_margin_call = df_collat_short.diff().fillna(df_collat_short) # do fillna because if we short the first day, the .diff won't detect it
         self.df_margin_call = df_margin_call
 
     def calc_portfolio_flows(self) :
