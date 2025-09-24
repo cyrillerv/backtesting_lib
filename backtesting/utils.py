@@ -49,6 +49,7 @@ def compute_portfolio_returns(
 
     lagged_total_value = portfolio_value.shift(1).sum(axis=1)
     portfolio_returns = daily_pnl / lagged_total_value
+    portfolio_returns.fillna(0, inplace=True)
 
     return portfolio_returns
 
