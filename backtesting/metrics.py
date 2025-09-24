@@ -94,8 +94,11 @@ def compute_metrics_per_ops(profit_long_positions, profit_short_positions) :
 
         # Variables pour stats
         hit_ratio = (nb_long_winners + nb_short_winners) / (nb_long_winners + nb_long_losers + nb_short_winners + nb_short_losers)
-        median_winners = np.nanmedian(all_perfs[all_perfs > 0])
-        median_losers = np.nanmedian(all_perfs[all_perfs < 0])
+        perfs_vals = all_perfs.values.ravel() # aplatir les data
+        pos_perf = perfs_vals[perfs_vals > 0] 
+        neg_perf = perfs_vals[perfs_vals < 0] 
+        median_winners = np.nanmedian(pos_perf) if neg_perf.size else np.nan
+        median_losers = np.nanmedian(neg_perf) if neg_perf.size else np.nan 
         average_proft_per_transaction = np.nanmean(all_perfs)
         dic_stats_operations = {"Hit_ratio": hit_ratio, "Winner_median": median_winners, "Loser_median": median_losers, "Avg_profit_per_ops": average_proft_per_transaction}
 
