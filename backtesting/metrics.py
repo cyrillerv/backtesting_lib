@@ -8,9 +8,17 @@ def compute_metrics(portfolio_returns, cumulative_pnl_portfolio, drawdown, df_vo
     # Convertir en taux sans risque quotidien
     rf_daily = (1 + rf_annual)**(1/252) - 1
     average_return = portfolio_returns.mean()
-    annualized_sharpe_ratio = (average_return - rf_daily) / portfolio_returns.std() * np.sqrt(base)
-    annualized_sortino_ratio = (average_return - rf_daily) / portfolio_returns.clip(upper=0).std() * np.sqrt(base)
-    annualized_calmar_ratio = (average_return - rf_daily) / drawdown.max()
+    
+    excess_return = average_return - rf_daily
+    annualized_sharpe_ratio = (excess_return / portfolio_returns.std() * np.sqrt(base)
+                            if portfolio_returns.std() != 0 else np.nan)
+
+    downside_std = portfolio_returns.clip(upper=0).std()
+    annualized_sortino_ratio = (excess_return / downside_std * np.sqrt(base)
+                                if downside_std != 0 else np.nan)
+
+    annualized_calmar_ratio = (excess_return / drawdown.max()
+                            if drawdown.max() != 0 else np.nan)
 
     # Calcul calmar ratio
     # Calcul du rendement annualisé
