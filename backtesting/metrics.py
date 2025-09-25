@@ -87,7 +87,7 @@ def run_regression_factor_exposition(portfolio_returns, bench_df_input) :
     return dic_metrics_regression, coef_dict_regression
 
 
-def compute_metrics_per_ops(profit_long_positions, profit_short_positions) :
+def compute_metrics_per_ops(profit_long_positions, profit_short_positions, df_volume_portfolio) :
 
         all_perfs = (profit_long_positions.fillna(0) + profit_short_positions.fillna(0)).replace(0, np.nan)
     
@@ -100,6 +100,21 @@ def compute_metrics_per_ops(profit_long_positions, profit_short_positions) :
         # Variables pour graph
         dic_winners_losers_long_short = {"Long - Gagnants": nb_long_winners, "Long - Perdants": nb_long_losers, "Short - Gagnants": nb_short_winners, "Short - Perdants":nb_short_losers}
 
+        # Fonction pour regrouper les valeurs séparées par des NaN
+        def group_by_nan(series):
+            """
+            Fonction pour regrouper les valeurs séparées par des NaN et de compter la taille du groupe.
+            """
+            group_id = series.isna().cumsum()
+            filled_series = series.fillna(-1)  # Remplacer temporairement les NaN
+            groups = filled_series[filled_series != -1].groupby(group_id).count()
+            return groups
+
+        # Calcul de la médiane des holding period par ops
+        df_len_ops = df_volume_portfolio.replace(0, np.nan).apply(group_by_nan)
+        valid_holding_period = perfs_vals[~np.isnan(perfs_vals)]
+        median_holding_period = np.nan if valid_holding_period.size == 0 else np.nanmedian(df_len_ops.values.flatten())
+
         # Variables pour stats
         total_trades = nb_long_winners + nb_long_losers + nb_short_winners + nb_short_losers
         hit_ratio = ((nb_long_winners + nb_short_winners) / total_trades
@@ -111,7 +126,7 @@ def compute_metrics_per_ops(profit_long_positions, profit_short_positions) :
         median_losers = np.nanmedian(neg_perf) if neg_perf.size else np.nan 
         valid_perfs = perfs_vals[~np.isnan(perfs_vals)]
         average_proft_per_transaction = np.nan if valid_perfs.size == 0 else np.nanmean(valid_perfs)
-        dic_stats_operations = {"Hit_ratio": hit_ratio, "Winner_median": median_winners, "Loser_median": median_losers, "Avg_profit_per_ops": average_proft_per_transaction}
+        dic_stats_operations = {"Hit_ratio": hit_ratio, "Winner_median": median_winners, "Loser_median": median_losers, "Avg_profit_per_ops": average_proft_per_transaction, "Median_holding_period":median_holding_period}
 
         return dic_winners_losers_long_short, dic_stats_operations
 

@@ -16,6 +16,10 @@ from .data_validator import DataValidator
 # TODO: ajouter possiblité de choisir régression entrre OLS et Ridge (si OLS, faire une PCA dans DataValidator)
 # TODO: changer le nom de la colonne 'Symbol' pour mettre 'Ticker qui est plus explicite.
 # TODO: changer borrow_rate par qc de plus explicite
+# TODO: calculate maximum time under water
+# TODO: calculate avg holding period
+# TODO: print annualized return
+# TODO: calculer le nb de jour de loss consecutifs
 class BacktestEngine:
     def __init__(self, 
                  orders_df_input: pd.DataFrame, 
@@ -153,7 +157,7 @@ class BacktestEngine:
 
         self.df_ABP = calculate_avg_buying_price(self.builder.df_volume_order, self.builder.df_volume_portfolio, self.builder.df_stock_prices_reindexed)
         self.profit_long_positions, self.profit_short_positions = calculate_profit_transaction(self.builder.df_volume_portfolio, self.builder.df_stock_prices_reindexed, self.df_ABP)
-        self.dic_winners_losers_long_short, self.dic_stats_operations = compute_metrics_per_ops(self.profit_long_positions, self.profit_short_positions)    
+        self.dic_winners_losers_long_short, self.dic_stats_operations = compute_metrics_per_ops(self.profit_long_positions, self.profit_short_positions, self.builder.df_volume_portfolio)    
 
         # Calculs de performance
         self.cumulative_pnl_portfolio, self.daily_pnl_portfolio, self.daily_pnl_per_ticker = compute_portfolio_pnl(self.builder.df_volume_portfolio, self.builder.df_stock_prices_reindexed)
