@@ -81,7 +81,6 @@ class DataValidator:
         self.stock_prices_df.ffill(inplace=True)
         self.stock_prices_df.bfill(inplace=True)
 
-        print("Stock prices dataframe check passed.")
         return self.stock_prices_df
     
     def check_df_bench(self) :
@@ -108,7 +107,6 @@ class DataValidator:
         self.bench_df.ffill(inplace=True)
         self.bench_df.bfill(inplace=True)
 
-        print("Stock prices dataframe check passed.")
         return self.bench_df
 
     def check_consistency(self):
@@ -138,7 +136,6 @@ class DataValidator:
             self.bench_df = self.bench_df.reindex(full_date_range)
             self.bench_df.ffill(inplace=True)
 
-        print("Consistency check passed.")
         return self.orders_df, self.stock_prices_df, self.bench_df
 
     def validate_all(self):

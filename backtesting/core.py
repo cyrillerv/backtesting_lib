@@ -188,7 +188,7 @@ class BacktestEngine:
 
         if not self.bench_df.empty :
             bench_returns = self.bench_df.pct_change().fillna(0)
-            self.dic_metrics_regression, self.coef_dict_regression, residuals, y_pred = run_ols_factor_regression(
+            self.dic_metrics_regression, self.coef_dict_regression, residuals, self.y_pred = run_ols_factor_regression(
                 self.portfolio_returns, 
                 bench_returns
             )
@@ -199,7 +199,7 @@ class BacktestEngine:
                 self.dic_metrics_regression,
                 self.coef_dict_regression,
                 residuals,
-                y_pred
+                self.y_pred
             )
 
             self.metrics.update(self.dic_metrics_regression)
@@ -218,7 +218,6 @@ class BacktestEngine:
 
         # Création des graphs plotly
         # self.cash_consumption_graph = plot_cash_consumption(self.builder.cash_consumption_with_costs)
-        self.cumulative_pnl_graph = plot_cumulative_pnl(self.cumulative_pnl_portfolio)
         self.drawdown_graph = plot_drawdown(self.drawdown)
         # TODO: something's wrong, the number do not add up
         # self.cash_graph = plot_cash_usage_breakdown(
