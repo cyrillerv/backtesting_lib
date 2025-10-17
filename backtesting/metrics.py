@@ -136,6 +136,8 @@ def compute_metrics_per_ops(profit_long_positions, profit_short_positions, df_vo
             groups = filled_series[filled_series != -1].groupby(group_id).count()
             return groups
 
+        perfs_vals = all_perfs.values.ravel() # aplatir les data
+
         # Calcul de la médiane des holding period par ops
         df_len_ops = df_volume_portfolio.replace(0, np.nan).apply(group_by_nan)
         valid_holding_period = perfs_vals[~np.isnan(perfs_vals)]
@@ -145,7 +147,6 @@ def compute_metrics_per_ops(profit_long_positions, profit_short_positions, df_vo
         total_trades = nb_long_winners + nb_long_losers + nb_short_winners + nb_short_losers
         hit_ratio = ((nb_long_winners + nb_short_winners) / total_trades
                     if total_trades > 0 else np.nan)
-        perfs_vals = all_perfs.values.ravel() # aplatir les data
         pos_perf = perfs_vals[perfs_vals > 0] 
         neg_perf = perfs_vals[perfs_vals < 0] 
         median_winners = np.nanmedian(pos_perf) if pos_perf.size else np.nan
