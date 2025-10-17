@@ -189,9 +189,21 @@ class BacktestEngine:
         if not self.bench_df.empty :
             self.dic_metrics_regression, self.coef_dict_regression = run_regression_factor_exposition(self.portfolio_returns, self.bench_df)
             self.bar_chart_factor_expo = plot_factor_exposition(self.coef_dict_regression)
-            print(self.dic_metrics_regression)
+
             # self.bench_expo_summary = compute_factor_exposition(self.portfolio_returns, self.bench_df)
             # print(self.bench_expo_summary)
+
+            factors_evolution = (self.bench_df.pct_change().fillna(0) + 1).cumprod()
+            max_cash = self.builder.cash_consumption_with_costs.max()
+            self.bench_cum_pnl = (
+                (factors_evolution * max_cash)
+                .diff()
+                .fillna(0)
+                .cumsum()
+                )
+            self.cumulative_pnl_graph = plot_cumulative_pnl(self.cumulative_pnl_portfolio, self.bench_cum_pnl)
+        else :
+            self.cumulative_pnl_graph = plot_cumulative_pnl(self.cumulative_pnl_portfolio)
 
         # Création des graphs plotly
         # self.cash_consumption_graph = plot_cash_consumption(self.builder.cash_consumption_with_costs)

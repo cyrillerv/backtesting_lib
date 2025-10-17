@@ -5,20 +5,41 @@ import plotly.express as px
 import numpy as np
 import pandas as pd
 
-def plot_cumulative_pnl(cumulative_pnl_portfolio):
+def plot_cumulative_pnl(cumulative_pnl_portfolio, bench_df=pd.DataFrame()):
     fig = go.Figure()
+    
+    # Ajouter le PnL du portfolio
     fig.add_trace(go.Scatter(
         x=cumulative_pnl_portfolio.index,
         y=cumulative_pnl_portfolio.values,
-        name="PnL"
+        name="PnL",
+        line=dict(width=2)
     ))
+    
+    # Ajouter toutes les colonnes du benchmark s'il n'est pas vide
+    if not bench_df.empty:
+        for col in bench_df.columns:
+            fig.add_trace(go.Scatter(
+                x=bench_df.index,
+                y=bench_df[col],
+                name=col,
+                line=dict(dash='dash')  # Ligne pointillée pour différencier
+            ))
+    
     fig.update_layout(
         title="Cumulative PnL",
         xaxis_title="Date",
         yaxis_title="PnL (€)",
         template="plotly_white",
-        hovermode="x unified"
+        hovermode="x unified",
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01
+        )
     )
+    
     return fig
 
 def plot_drawdown(drawdown):
