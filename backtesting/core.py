@@ -187,11 +187,22 @@ class BacktestEngine:
         # self.metrics.update(self.dic_stats_operations)
 
         if not self.bench_df.empty :
-            self.dic_metrics_regression, self.coef_dict_regression = run_regression_factor_exposition(self.portfolio_returns, self.bench_df)
-            self.bar_chart_factor_expo = plot_factor_exposition(self.coef_dict_regression)
+            bench_returns = self.bench_df.pct_change().fillna(0)
+            self.dic_metrics_regression, self.coef_dict_regression, residuals, y_pred = run_ols_factor_regression(
+                self.portfolio_returns, 
+                bench_returns
+            )
 
-            # self.bench_expo_summary = compute_factor_exposition(self.portfolio_returns, self.bench_df)
-            # print(self.bench_expo_summary)
+            self.fig_regression = plot_ols_regression_results(
+                self.portfolio_returns,
+                bench_returns,
+                self.dic_metrics_regression,
+                self.coef_dict_regression,
+                residuals,
+                y_pred
+            )
+
+            self.metrics.update(self.dic_metrics_regression)
 
             factors_evolution = (self.bench_df.pct_change().fillna(0) + 1).cumprod()
             max_cash = self.builder.cash_consumption_with_costs.max()
@@ -251,7 +262,7 @@ class BacktestEngine:
         self.hit_ratio_pie.show()
         self.volume_vs_perf_scatter_plot.show()
         if not self.bench_df.empty :
-            self.bar_chart_factor_expo.show()
+            self.fig_regression.show()
         if self.sector_mapping != {} :
             self.graph_sector_exposure.show()
             self.allocation_sector_long.show()

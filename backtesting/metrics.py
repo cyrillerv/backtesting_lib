@@ -52,50 +52,65 @@ def compute_metrics(portfolio_returns, cumulative_pnl_portfolio, drawdown, df_vo
     return metrics
 
 
+from sklearn.linear_model import LinearRegression
 
-
-# def compute_factor_exposition(portfolio_returns, bench_df_input) :
-
-#     bench_returns = bench_df_input.pct_change()
-#     bench_returns.dropna(inplace=True)
-#     # bench_returns_reindex = bench_returns.reindex(portfolio_returns.index)
-
-#     X_factors = bench_returns.copy()
-#     y_strategy_returns = portfolio_returns.dropna(how='all').copy()
-#     # Assure-toi que les deux sont bien alignés dans le temps
-#     X_factors, y_strategy_returns = X_factors.align(y_strategy_returns, join="inner", axis=0)
-
-#     X_sm = sm.add_constant(X_factors)  # Ajoute une colonne "constante" pour alpha
-#     model_sm = sm.OLS(y_strategy_returns, X_sm).fit()
-
-#     return model_sm.summary()
-
-
-
-
-def run_regression_factor_exposition(portfolio_returns, bench_df_input) :
-    X_factors = bench_df_input.copy()
-    y_strategy_returns = portfolio_returns.copy()
-
-    y_strategy_returns.dropna(how='all', inplace=True)
-
-    X, y = X_factors.align(y_strategy_returns, join="inner", axis=0)
-
-    model = RidgeCV(alphas=[0.1, 0.5, 1.0, 5, 10.0, 20, 30, 50, 70, 100.0, 200, 300, 500, 600, 700, 800])
+def run_ols_factor_regression(strategy_returns, factor_returns):
+    """
+    Perform OLS factor regression analysis.
+    
+    Parameters
+    ----------
+    strategy_returns : pd.Series
+        Strategy returns time series
+    factor_returns : pd.DataFrame
+        Factor returns (already in returns, not prices)
+        
+    Returns
+    -------
+    dict
+        Regression metrics (alpha, R², residuals std, etc.)
+    dict
+        Factor exposures (betas)
+    pd.Series
+        Residuals
+    pd.Series
+        Predicted returns
+    """
+    # Align data on common dates
+    X, y = factor_returns.align(strategy_returns, join="inner", axis=0)
+    
+    if len(X) == 0:
+        raise ValueError("No overlapping dates between strategy and factor returns")
+    
+    # OLS regression
+    model = LinearRegression()
     model.fit(X, y)
-
-    y_pred = model.predict(X)
+    
+    # Predictions and residuals
+    y_pred = pd.Series(model.predict(X), index=y.index)
     residuals = y - y_pred
-    alpha = residuals.mean()
-
+    
+    # Calculate metrics
+    alpha = model.intercept_
     r_squared = model.score(X, y)
+    residuals_std = residuals.std()
+    
+    metrics = {
+        "alpha": round(float(alpha), 6),
+        "alpha_annualized": round(float(alpha * 252), 6),  # Assuming daily returns
+        "r_squared": round(float(r_squared), 4),
+        "residuals_std": round(float(residuals_std), 6),
+        "n_observations": len(X)
+    }
+    
+    factor_exposures = {
+        factor: round(float(beta), 4) 
+        for factor, beta in zip(X.columns, model.coef_)
+    }
+    
+    return metrics, factor_exposures, residuals, y_pred
 
-    # Pour le graph
-    coef_dict_regression = dict(zip(X.columns, model.coef_))
-    # Comme metrics
-    dic_metrics_regression = {"Ridge_alpha": model.alpha_, "alpha_generated": alpha, "R²": r_squared}
 
-    return dic_metrics_regression, coef_dict_regression
 
 
 def compute_metrics_per_ops(profit_long_positions, profit_short_positions, df_volume_portfolio) :

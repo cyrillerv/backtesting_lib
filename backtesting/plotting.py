@@ -1,6 +1,7 @@
 # Tous les graphiques Plotly
 
 import plotly.graph_objs as go
+from plotly.subplots import make_subplots
 import plotly.express as px
 import numpy as np
 import pandas as pd
@@ -246,33 +247,6 @@ def plot_volume_against_perf(df_metrics_per_ticker):
 
 
 
-def plot_factor_exposition(coef_dict) :
-
-    # Trier par valeur absolue et ne garder que les 10 plus importants
-    top_coef_items = sorted(coef_dict.items(), key=lambda x: abs(x[1]), reverse=True)[:10]
-
-    # Extraire noms et valeurs
-    factors = [k for k, _ in top_coef_items]
-    coefs = [v for _, v in top_coef_items]
-
-    # Créer le bar plot
-    fig = go.Figure(data=[go.Bar(
-        x=factors,
-        y=coefs,
-        marker_color=['red' if c < 0 else 'green' for c in coefs]
-    )])
-
-    fig.update_layout(
-        title='Top 10 coefficients Ridge par facteur (valeur absolue)',
-        xaxis_title='Facteurs',
-        yaxis_title='Coefficient',
-        yaxis=dict(zeroline=True, zerolinewidth=2, zerolinecolor='black'),
-        template='plotly_white'
-    )
-
-    return fig
-
-
 def plot_sector_exposure(positions_melted: pd.DataFrame, sector_mapping: dict):
     # engine.builder.df_valeur_portfolio
     """
@@ -411,3 +385,141 @@ def create_sector_allocation_chart(position, positions_melted):
 
     return fig
 
+
+
+
+
+def plot_ols_regression_results(strategy_returns, factor_returns, metrics, factor_exposures, residuals, y_pred):
+    """
+    Visualize OLS factor regression results.
+    
+    Parameters
+    ----------
+    strategy_returns : pd.Series
+        Strategy returns
+    factor_returns : pd.DataFrame
+        Factor returns
+    metrics : dict
+        Regression metrics
+    factor_exposures : dict
+        Factor betas
+    residuals : pd.Series
+        Regression residuals
+    y_pred : pd.Series
+        Predicted returns
+    """
+    # Align for plotting
+    X, y = factor_returns.align(strategy_returns, join="inner", axis=0)
+    
+    # Create subplots
+    fig = make_subplots(
+        rows=2, cols=2,
+        subplot_titles=(
+            'Factor Exposures (Betas)',
+            'Actual vs Predicted Returns',
+            'Residuals Over Time',
+            'Residuals Distribution'
+        ),
+        specs=[
+            [{"type": "bar"}, {"type": "scatter"}],
+            [{"type": "scatter"}, {"type": "histogram"}]
+        ],
+        vertical_spacing=0.12,
+        horizontal_spacing=0.10
+    )
+    
+    # 1. Factor exposures bar chart
+    factors = list(factor_exposures.keys())
+    betas = list(factor_exposures.values())
+    colors = ['red' if b < 0 else 'green' for b in betas]
+    
+    fig.add_trace(
+        go.Bar(
+            x=factors,
+            y=betas,
+            marker_color=colors,
+            text=[f'{b:.3f}' for b in betas],
+            textposition='outside',
+            showlegend=False
+        ),
+        row=1, col=1
+    )
+    fig.add_hline(y=0, line_dash="dash", line_color="gray", row=1, col=1)
+    
+    # 2. Actual vs Predicted scatter
+    fig.add_trace(
+        go.Scatter(
+            x=y_pred.values,
+            y=y.values,
+            mode='markers',
+            marker=dict(size=5, opacity=0.6, color='blue'),
+            showlegend=False
+        ),
+        row=1, col=2
+    )
+    
+    # Perfect fit line
+    min_val = min(y_pred.min(), y.min())
+    max_val = max(y_pred.max(), y.max())
+    fig.add_trace(
+        go.Scatter(
+            x=[min_val, max_val],
+            y=[min_val, max_val],
+            mode='lines',
+            line=dict(color='red', dash='dash', width=2),
+            showlegend=False
+        ),
+        row=1, col=2
+    )
+    
+    # 3. Residuals time series
+    fig.add_trace(
+        go.Scatter(
+            x=residuals.index,
+            y=residuals.values,
+            mode='lines',
+            line=dict(color='purple', width=1),
+            showlegend=False
+        ),
+        row=2, col=1
+    )
+    fig.add_hline(y=0, line_dash="dash", line_color="gray", row=2, col=1)
+    
+    # 4. Residuals histogram
+    fig.add_trace(
+        go.Histogram(
+            x=residuals.values,
+            nbinsx=40,
+            marker_color='orange',
+            showlegend=False
+        ),
+        row=2, col=2
+    )
+    
+    # Update axes labels
+    fig.update_xaxes(title_text="Factors", row=1, col=1)
+    fig.update_yaxes(title_text="Beta", row=1, col=1)
+    
+    fig.update_xaxes(title_text="Predicted Returns", row=1, col=2)
+    fig.update_yaxes(title_text="Actual Returns", row=1, col=2)
+    
+    fig.update_xaxes(title_text="Date", row=2, col=1)
+    fig.update_yaxes(title_text="Residuals", row=2, col=1)
+    
+    fig.update_xaxes(title_text="Residuals", row=2, col=2)
+    fig.update_yaxes(title_text="Frequency", row=2, col=2)
+    
+    # Overall layout
+    title = (f"OLS Factor Regression Analysis | "
+             f"R² = {metrics['r_squared']:.3f} | "
+             f"Alpha = {metrics['alpha']:.4%} "
+             f"({metrics['alpha_annualized']:.2%} annualized)")
+    
+    fig.update_layout(
+        height=800,
+        title_text=title,
+        template="plotly_white",
+        showlegend=False
+    )
+    
+    return fig
