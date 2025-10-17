@@ -5,38 +5,49 @@ from sklearn.linear_model import RidgeCV
 
 def compute_metrics(portfolio_returns, cumulative_pnl_portfolio, drawdown, df_volume_order, max_cash_needed, rf_annual, base):
     
-    # Convertir en taux sans risque quotidien
-    rf_daily = (1 + rf_annual)**(1/252) - 1
+    # Count the number of years
+    nb_years = (portfolio_returns.index.max() - portfolio_returns.index.min()) / pd.Timedelta(days=365.25)
+
+    # Calculate annualized return
+    total_profit = cumulative_pnl_portfolio.iloc[-1]
+    total_return = total_profit / max_cash_needed
+    annualized_return = total_return ** (1 / nb_years) - 1
+    annualized_stdev = portfolio_returns.std() * np.sqrt(base)
+    annualized_downside_stdev = portfolio_returns.clip(upper=0).std() * np.sqrt(base)
+
     average_return = portfolio_returns.mean()
 
-    excess_return = average_return - rf_daily
-    annualized_sharpe_ratio = (excess_return / portfolio_returns.std() * np.sqrt(base)
-                            if portfolio_returns.std() != 0 else np.nan)
+    excess_return = annualized_return - rf_annual
+    annualized_sharpe_ratio = (excess_return / annualized_stdev
+                            if annualized_stdev != 0 else np.nan)
 
-    downside_std = portfolio_returns.clip(upper=0).std()
-    annualized_sortino_ratio = (excess_return / downside_std * np.sqrt(base)
-                                if downside_std != 0 else np.nan)
+    # downside_std = portfolio_returns.clip(upper=0).std()
+    annualized_sortino_ratio = (excess_return / annualized_downside_stdev
+                                if annualized_downside_stdev != 0 else np.nan)
 
-    annualized_calmar_ratio = (excess_return / drawdown.max()
+    calmar_ratio = (annualized_return / drawdown.max()
                             if drawdown.max() != 0 else np.nan)
 
-    # Calcul calmar ratio
-    # Calcul du rendement annualisé
 
+    def format_metric(value, decimals):
+        """Format a metric value with appropriate precision."""
+        return int(value) if decimals == 0 else round(float(value), decimals)
 
-    metrics = {}
-    metrics["sharpe_ratio"] = round(float(annualized_sharpe_ratio), 2)
-    metrics["sortino_ratio"] = round(float(annualized_sortino_ratio), 2)
-    metrics["calmar_ratio"] = round(float(annualized_calmar_ratio), 2)
-    metrics["max_cash_needed"] = round(float(max_cash_needed), 2)
-    metrics["total_profit"] = round(float(cumulative_pnl_portfolio.iloc[-1]), 2)
-    metrics["total_return"] = round(float(metrics["total_profit"] / metrics["max_cash_needed"]), 4)
-    metrics["volatility"] = round(float(portfolio_returns.std(ddof=1) * np.sqrt(base)), 4) # ddof=1 signifie "degrés de liberté = 1" et sert à calculer l'écart-type corrigé (Bessel's correction), utilisé pour les échantillons au lieu de toute la population.
-    metrics["max_drawdown"] = round(float(drawdown.max()), 4)
-    metrics["average_transac_day"] = round(float(df_volume_order.notna().sum(axis=1).mean()), 2)
-    metrics["max_nb_transac_day"] = int(df_volume_order.notna().sum(axis=1).max())
-    metrics["nb_transacs_total"] = int(df_volume_order.notna().sum().sum())
-    metrics["daily_portfolio_average_return"] = round(float(average_return), 4)
+    metrics = {
+        "sharpe_ratio": format_metric(annualized_sharpe_ratio, 2),
+        "sortino_ratio": format_metric(annualized_sortino_ratio, 2),
+        "calmar_ratio": format_metric(calmar_ratio, 2),
+        "max_cash_needed": format_metric(max_cash_needed, 2),
+        "total_profit": format_metric(total_profit, 2),
+        "total_return": format_metric(total_return, 4),
+        "annualized_return": format_metric(annualized_return, 4),
+        "volatility": format_metric(portfolio_returns.std(ddof=1) * np.sqrt(base), 4),
+        "max_drawdown": format_metric(drawdown.max(), 4),
+        "average_transac_day": format_metric(df_volume_order.notna().sum(axis=1).mean(), 2),
+        "max_nb_transac_day": format_metric(df_volume_order.notna().sum(axis=1).max(), 0),
+        "nb_transacs_total": format_metric(df_volume_order.notna().sum().sum(), 0),
+        "daily_portfolio_average_return": format_metric(average_return, 4)
+    }
     
     return metrics
 
