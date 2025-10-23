@@ -11,7 +11,7 @@ def compute_metrics(portfolio_returns, cumulative_pnl_portfolio, drawdown, df_vo
     # Calculate annualized return
     total_profit = cumulative_pnl_portfolio.iloc[-1]
     total_return = total_profit / max_cash_needed
-    annualized_return = total_return ** (1 / nb_years) - 1
+    annualized_return = (1 + total_return) ** (1 / nb_years) - 1
     annualized_stdev = portfolio_returns.std() * np.sqrt(base)
     annualized_downside_stdev = portfolio_returns.clip(upper=0).std() * np.sqrt(base)
 
