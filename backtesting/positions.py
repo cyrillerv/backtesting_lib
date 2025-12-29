@@ -52,6 +52,10 @@ class PortfolioBuilder() :
             if result is not None:
                 orders_df_with_SL_TP = pd.concat([orders_df_with_SL_TP, pd.DataFrame([result])], ignore_index=True)
 
+        orders_df_with_SL_TP['Flows'] = orders_df_with_SL_TP["Volume"] * np.where(
+            orders_df_with_SL_TP["Type"] == "Buy", 1, -1
+        )
+        
         # (Optionnel) trier pour faciliter la lecture
         orders_df_with_SL_TP = orders_df_with_SL_TP.sort_values(by="Date").reset_index(drop=True)
         self.orders_df_with_SL_TP = orders_df_with_SL_TP
