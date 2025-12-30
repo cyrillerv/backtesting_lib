@@ -12,7 +12,7 @@ class DataValidator:
 
     def check_columns_orders(self) :
         required_columns = {"Date", "Symbol", "Volume", "Type"}
-        optional_columns = {"StopLoss", "TakeProfit"}
+        optional_columns = {"StopLoss", "TakeProfit", "ClosingDate"}
 
         input_columns = set(self.orders_df.columns)
 
@@ -129,12 +129,12 @@ class DataValidator:
         full_date_range = pd.date_range(start=start_date, end=end_date, freq='D')
 
         assert end_date >= last_order_date, f"Le df des stock prices ne va que jusqu'au {end_date} tandis que le dernier ordre est passé le {last_order_date}."
-        self.stock_prices_df = self.stock_prices_df.reindex(full_date_range)
-        self.stock_prices_df.ffill(inplace=True)
+        self.stock_prices_df = self.stock_prices_df.reindex(full_date_range, method='ffill')
+        # self.stock_prices_df.ffill(inplace=True)
         if not self.bench_df.empty :
             assert self.bench_df.index.max() >= last_order_date, f"Le df des benchmarks ne va que jusqu'au {self.bench_df.index.max()} tandis que le dernier ordre est passé le {last_order_date}."
-            self.bench_df = self.bench_df.reindex(full_date_range)
-            self.bench_df.ffill(inplace=True)
+            self.bench_df = self.bench_df.reindex(full_date_range, method='ffill')
+            # self.bench_df.ffill(inplace=True)
 
         return self.orders_df, self.stock_prices_df, self.bench_df
 

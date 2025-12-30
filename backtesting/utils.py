@@ -285,9 +285,12 @@ def simulate_SL_TP_row(row, df_stock_prices, orders_df_with_SL_TP):
             TP_trigger = False
             SL_trigger = True
 
+    closing_date = row.get("ClosingDate")
+    closing_date = closing_date if pd.notna(closing_date) else pd.Timestamp.max
+
     # On récupère le dernier volume qu'on avait en portefeuille avant la clôture
     volume_on_peut_close = abs(volume_en_portfolio[volume_en_portfolio.index <= date_close].iloc[-1])
-    if SL_trigger or TP_trigger:
+    if (SL_trigger or TP_trigger) and (date_close < closing_date):
         operation_type = "Sell" if row['Type'] == "Buy" else "Buy"
         volume_operation = min(row['Volume'], volume_on_peut_close)
         return {
@@ -300,5 +303,18 @@ def simulate_SL_TP_row(row, df_stock_prices, orders_df_with_SL_TP):
             "Flows": -volume_operation if operation_type == "Sell" else volume_operation,
             "Trigger": "StopLoss" if SL_trigger else "TakeProfit"
         }
-
+    elif closing_date != pd.Timestamp.max :
+        # On return l'opération de close par défaut (horizon d'investissement), un ordre qui n'a pas de rationnelle, il n'y a pas eu de signal
+        operation_type = "Sell" if row['Type'] == "Buy" else "Buy"
+        return {
+            "Date": closing_date,
+            "Symbol": symbol,
+            "Volume": row['Volume'], # On prend le min entre le volume en portfolio et le volume sur lequel on a mis un trigger
+            "Type": operation_type,
+            "StopLoss": np.nan,
+            "TakeProfit": np.nan,
+            "Flows": -row['Volume'] if operation_type == "Sell" else row['Volume'],
+            "Trigger": "closed"
+        }
+    
     return None
